@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Coaching Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #F7F6F2;
+    --surface: #FFFFFF;
+    --surface2: #F0EFE9;
+    --border: #E2E0D8;
+    --border2: #CCCAB8;
+    --text: #1A1917;
+    --text2: #6B6960;
+    --text3: #9B9A93;
+    --accent: #2D5BE3;
+    --accent-bg: #EEF2FD;
+    --green: #1A7A4A;
+    --green-bg: #E8F5EE;
+    --amber: #8A5C00;
+    --amber-bg: #FDF3DC;
+    --orange: #B54A00;
+    --orange-bg: #FDF0E8;
+    --red: #C0392B;
+    --red-bg: #FDECEA;
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+
+  /* ── LOGIN ── */
+  #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; }
+  .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2.5rem 2.5rem 2rem; width: 100%; max-width: 380px; }
+  .login-logo { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); margin-bottom: 1.75rem; }
+  .login-title { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 0.25rem; }
+  .login-sub { font-size: 13px; color: var(--text2); margin-bottom: 1.75rem; }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .field label { font-size: 12px; font-weight: 500; color: var(--text2); }
+  .field input { border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 12px; font-family: inherit; font-size: 14px; background: var(--bg); color: var(--text); outline: none; transition: border 0.15s; }
+  .field input:focus { border-color: var(--accent); background: #fff; }
+  .login-err { font-size: 12px; color: var(--red); margin-bottom: 10px; display: none; }
+  .btn-primary { width: 100%; background: var(--text); color: #fff; border: none; border-radius: var(--radius); padding: 10px; font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; margin-top: 4px; }
+  .btn-primary:hover { opacity: 0.85; }
+  .login-hint { font-size: 11px; color: var(--text3); margin-top: 1rem; text-align: center; }
+
+  /* ── APP SHELL ── */
+  #app { display: none; min-height: 100vh; }
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 1.5rem; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .tb-logo { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); }
+  .tb-sep { width: 1px; height: 18px; background: var(--border); }
+  .tb-title { font-size: 14px; font-weight: 500; color: var(--text); }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .tb-week { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
+  .btn-logout { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; font-family: inherit; font-size: 12px; color: var(--text2); cursor: pointer; }
+  .btn-logout:hover { background: var(--surface2); }
+
+  .main { padding: 1.5rem; max-width: 1200px; margin: 0 auto; }
+
+  /* ── STATS ── */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .stat-label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .stat-val { font-size: 28px; font-weight: 600; color: var(--text); font-family: 'DM Mono', monospace; }
+
+  /* ── TOOLBAR ── */
+  .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .toolbar-left { font-size: 13px; font-weight: 500; color: var(--text); }
+  .toolbar-right { display: flex; gap: 8px; }
+  .btn-sec { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 7px 14px; font-family: inherit; font-size: 13px; color: var(--text2); cursor: pointer; font-weight: 500; transition: all 0.15s; }
+  .btn-sec:hover { border-color: var(--border2); color: var(--text); }
+  .btn-dark { background: var(--text); color: #fff; border: none; border-radius: var(--radius); padding: 7px 14px; font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+  .btn-dark:hover { opacity: 0.85; }
+
+  /* ── TABLE ── */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { background: var(--surface2); }
+  th { padding: 10px 12px; text-align: left; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg); }
+  .empty-row td { text-align: center; padding: 3rem; color: var(--text3); font-size: 13px; }
+
+  /* ── BADGES ── */
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+  .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .b1 { background: var(--green-bg); color: var(--green); } .b1::before { background: var(--green); }
+  .b2 { background: var(--accent-bg); color: var(--accent); } .b2::before { background: var(--accent); }
+  .b3 { background: var(--amber-bg); color: var(--amber); } .b3::before { background: var(--amber); }
+  .b4 { background: var(--orange-bg); color: var(--orange); } .b4::before { background: var(--orange); }
+  .b5 { background: var(--red-bg); color: var(--red); } .b5::before { background: var(--red); }
+
+  .podio-btn { display: inline-block; background: var(--accent-bg); color: var(--accent); border: 1px solid #C5D3F8; border-radius: 7px; padding: 3px 10px; font-size: 11px; font-weight: 500; text-decoration: none; cursor: pointer; white-space: nowrap; }
+  .podio-btn:hover { background: #dde6fc; }
+  .no-podio { color: var(--text3); font-size: 12px; }
+
+  .row-actions { display: flex; gap: 6px; }
+  .btn-edit { background: none; border: 1px solid var(--border); border-radius: 7px; padding: 4px 10px; font-family: inherit; font-size: 11px; color: var(--text2); cursor: pointer; }
+  .btn-edit:hover { border-color: var(--border2); color: var(--text); }
+  .btn-del { background: none; border: 1px solid var(--border); border-radius: 7px; padding: 4px 8px; font-family: inherit; font-size: 11px; color: var(--text3); cursor: pointer; }
+  .btn-del:hover { border-color: #f5c6c6; color: var(--red); background: var(--red-bg); }
+
+  .update-cell { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text2); }
+  .date-cell { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text2); white-space: nowrap; }
+
+  /* ── MODAL ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; padding: 1rem; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border); width: 100%; max-width: 540px; max-height: 90vh; overflow-y: auto; }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 1.5rem 1rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); z-index: 1; }
+  .modal-head h2 { font-size: 15px; font-weight: 600; }
+  .modal-close { background: none; border: none; font-size: 20px; color: var(--text3); cursor: pointer; line-height: 1; padding: 0 2px; }
+  .modal-body { padding: 1.25rem 1.5rem; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .fg { display: flex; flex-direction: column; gap: 5px; }
+  .fg.full { grid-column: 1 / -1; }
+  .fg label { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
+  .fg input, .fg select, .fg textarea { border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 11px; font-family: inherit; font-size: 13px; background: var(--bg); color: var(--text); outline: none; transition: border 0.15s; }
+  .fg input:focus, .fg select:focus, .fg textarea:focus { border-color: var(--accent); background: #fff; }
+  .fg textarea { resize: vertical; min-height: 60px; }
+  .voice-wrap { display: flex; gap: 6px; }
+  .voice-wrap input, .voice-wrap textarea { flex: 1; }
+  .btn-voice { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 12px; font-family: inherit; font-size: 12px; color: var(--text2); cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 5px; flex-shrink: 0; transition: all 0.15s; }
+  .btn-voice:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-voice.listening { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+  .mic-icon { font-size: 14px; }
+  .modal-foot { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+  /* ── REPORT MODAL ── */
+  .report-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .report-controls label { font-size: 12px; color: var(--text2); font-weight: 500; }
+  .report-controls input[type=date] { border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 10px; font-family: 'DM Mono', monospace; font-size: 12px; background: var(--bg); color: var(--text); outline: none; }
+  .report-controls input[type=date]:focus { border-color: var(--accent); }
+  .report-body { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; font-size: 13px; line-height: 1.8; max-height: 420px; overflow-y: auto; }
+  .report-header-text { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+  .report-row { display: grid; grid-template-columns: 140px 90px 1fr; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--border); align-items: start; }
+  .report-row:last-child { border-bottom: none; }
+  .rr-name { font-weight: 500; color: var(--text); }
+  .rr-badge { }
+  .rr-update { color: var(--text2); }
+  .report-empty { color: var(--text3); text-align: center; padding: 1rem; }
+  .btn-copy { background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px; font-family: inherit; font-size: 12px; color: var(--text2); cursor: pointer; }
+  .btn-copy:hover { border-color: var(--border2); }
+
+  .section-divider { margin: 1.25rem 0 0.75rem; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); }
+
+  /* ── TABS ── */
+  .tabs { display: flex; gap: 2px; margin-bottom: 1.5rem; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 3px; width: fit-content; }
+  .tab { padding: 6px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--text2); cursor: pointer; border: none; background: none; font-family: inherit; transition: all 0.15s; }
+  .tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .tab-badge { display: inline-block; background: var(--red); color: #fff; border-radius: 10px; font-size: 10px; font-weight: 600; padding: 1px 6px; margin-left: 5px; vertical-align: middle; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ── OUTREACH ── */
+  .outreach-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .outreach-empty { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 3rem; text-align: center; color: var(--text3); font-size: 13px; }
+  .outreach-list { display: flex; flex-direction: column; gap: 8px; }
+  .outreach-card { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: var(--radius); padding: 14px 16px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+  .outreach-card.urgent { border-left-color: var(--red); }
+  .outreach-card.due { border-left-color: var(--amber); }
+  .outreach-card.soon { border-left-color: var(--accent); }
+  .oc-name { font-size: 14px; font-weight: 500; color: var(--text); }
+  .oc-meta { font-size: 12px; color: var(--text2); margin-top: 3px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .oc-days { font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .oc-days.urgent { color: var(--red); }
+  .oc-days.due { color: var(--amber); }
+  .oc-days.soon { color: var(--accent); }
+  .cadence-info { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 16px; margin-bottom: 1rem; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  .cadence-item { font-size: 11px; color: var(--text3); }
+  .cadence-item strong { color: var(--text2); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  @media (max-width: 768px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .form-grid { grid-template-columns: 1fr; }
+    .fg.full { grid-column: 1; }
+    .topbar { padding: 0 1rem; }
+    .main { padding: 1rem; }
+    table { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">Coaching Dashboard</div>
+    <div class="login-title">Welcome back</div>
+    <div class="login-sub">Sign in to manage your student roster.</div>
+    <div class="login-err" id="login-err">Incorrect username or password.</div>
+    <div class="field"><label>Username</label><input type="text" id="login-user" placeholder="your username" autocomplete="username" /></div>
+    <div class="field"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" /></div>
+    <button class="btn-primary" onclick="doLogin()">Sign in</button>
+    <div class="login-hint">Default: coach / coach123</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="tb-logo">Coaching</div>
+      <div class="tb-sep"></div>
+      <div class="tb-title" id="tb-coach-name">Coach</div>
+    </div>
+    <div class="topbar-right">
+      <div class="tb-week" id="tb-week"></div>
+      <button class="btn-logout" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Total students</div><div class="stat-val" id="stat-total">0</div></div>
+      <div class="stat"><div class="stat-label">In a deal</div><div class="stat-val" id="stat-deal">0</div></div>
+      <div class="stat"><div class="stat-label">Taking action</div><div class="stat-val" id="stat-action">0</div></div>
+      <div class="stat"><div class="stat-label">Inactive / stalling</div><div class="stat-val" id="stat-inactive">0</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('roster')">Student Roster</button>
+      <button class="tab" onclick="switchTab('outreach')" id="outreach-tab-btn">My Outreach <span class="tab-badge" id="outreach-count" style="display:none">0</span></button>
+    </div>
+
+    <!-- ROSTER TAB -->
+    <div class="tab-content active" id="tab-roster">
+      <div class="toolbar-left">Student roster</div>
+      <div class="toolbar-right">
+        <button class="btn-sec" onclick="openReport()">Weekly report</button>
+        <button class="btn-sec" onclick="triggerCSVImport()">Import CSV</button>
+        <button class="btn-dark" onclick="openAddModal()">+ Add student</button>
+        <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="handleCSVImport(event)" />
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>ID</th>
+            <th>Podio</th>
+            <th>Podio status</th>
+            <th>Activity level</th>
+            <th>Status update</th>
+            <th>Last contact</th>
+            <th>Next outreach</th>
+            <th>Paired coach</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="student-tbody">
+          <tr class="empty-row"><td colspan="10">No students yet. Click "+ Add student" to get started.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    </div><!-- end tab-roster -->
+
+    <!-- OUTREACH TAB -->
+    <div class="tab-content" id="tab-outreach">
+      <div class="outreach-header">
+        <div>
+          <div style="font-size:13px;font-weight:500;color:var(--text)">Today's outreach</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;" id="outreach-date-label"></div>
+        </div>
+        <button class="btn-dark" onclick="downloadIcal()" id="ical-btn" style="display:none">⬇ Download calendar block</button>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Overdue — reach out now</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div> Due today</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div> Coming up soon</div>
+      </div>
+
+      <div class="cadence-info">
+        <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-right:4px;">Cadence rules:</span>
+        <span class="cadence-item"><strong>In deal</strong> · every 1–2 days</span>
+        <span class="cadence-item"><strong>Taking action</strong> · weekly</span>
+        <span class="cadence-item"><strong>Stalling</strong> · every 3 days</span>
+        <span class="cadence-item"><strong>Recently inactive</strong> · every 2 weeks</span>
+        <span class="cadence-item"><strong>Long-term inactive</strong> · monthly</span>
+      </div>
+
+      <div id="outreach-list-wrap"></div>
+    </div><!-- end tab-outreach -->
+
+  </div><!-- end main -->
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="student-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modal-title">Add student</h2>
+      <button class="modal-close" onclick="closeModal('student-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-id" />
+      <div class="form-grid">
+        <div class="fg">
+          <label>Student name</label>
+          <div class="voice-wrap">
+            <input type="text" id="f-name" placeholder="Full name" />
+            <button class="btn-voice" onclick="startDictation('f-name', this)"><span class="mic-icon">🎤</span> Dictate</button>
+          </div>
+        </div>
+        <div class="fg">
+          <label>Student ID</label>
+          <input type="text" id="f-id" placeholder="e.g. 10482" />
+        </div>
+        <div class="fg full">
+          <label>Podio link (URL)</label>
+          <input type="url" id="f-podio" placeholder="https://podio.com/..." />
+        </div>
+        <div class="fg">
+          <label>Podio status</label>
+          <input type="text" id="f-podio-status" placeholder="Active / Inactive..." />
+        </div>
+        <div class="fg">
+          <label>Activity level</label>
+          <select id="f-activity">
+            <option value="1">1 — Actively in a deal</option>
+            <option value="2">2 — Taking action, no deal yet</option>
+            <option value="3">3 — Starting to stall</option>
+            <option value="4">4 — Recently inactive</option>
+            <option value="5">5 — Long-term inactive</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Paired coach</label>
+          <input type="text" id="f-coach" placeholder="Fly-out / base camp coach or N/A" />
+        </div>
+        <div class="fg full">
+          <label>One-line status update</label>
+          <div class="voice-wrap">
+            <input type="text" id="f-update" placeholder="Where are they in the process?" />
+            <button class="btn-voice" onclick="startDictation('f-update', this)"><span class="mic-icon">🎤</span> Dictate</button>
+          </div>
+        </div>
+        <div class="fg">
+          <label>Last contact date</label>
+          <input type="date" id="f-last-contact" />
+        </div>
+        <div class="fg">
+          <label>Next outreach / scheduled call</label>
+          <input type="date" id="f-next-outreach" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-sec" onclick="closeModal('student-modal')">Cancel</button>
+      <button class="btn-dark" onclick="saveStudent()">Save student</button>
+    </div>
+  </div>
+</div>
+
+<!-- CSV IMPORT PREVIEW MODAL -->
+<div class="modal-overlay" id="csv-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Import students from CSV</h2>
+      <button class="modal-close" onclick="closeModal('csv-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="csv-preview-msg" style="font-size:13px;color:var(--text2);margin-bottom:1rem;"></div>
+      <div class="table-wrap" style="max-height:320px;overflow-y:auto;">
+        <table id="csv-preview-table" style="font-size:12px;">
+          <thead id="csv-preview-head"></thead>
+          <tbody id="csv-preview-body"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:1rem;font-size:12px;color:var(--text3);">Missing fields will be left blank and can be filled in by editing each student.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-sec" onclick="closeModal('csv-modal')">Cancel</button>
+      <button class="btn-dark" id="csv-confirm-btn" onclick="confirmCSVImport()">Import all students</button>
+    </div>
+  </div>
+</div>
+
+<!-- REPORT MODAL -->
+<div class="modal-overlay" id="report-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Weekly report</h2>
+      <button class="modal-close" onclick="closeModal('report-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="report-controls">
+        <label>Date range:</label>
+        <input type="date" id="report-from" />
+        <span style="color:var(--text3)">→</span>
+        <input type="date" id="report-to" />
+        <button class="btn-sec" onclick="renderReport()">Refresh</button>
+        <button class="btn-copy" onclick="copyReport()">Copy text</button>
+      </div>
+      <div class="report-body" id="report-body"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-sec" onclick="closeModal('report-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────
+const USERS = { coach: 'coach123', chris: 'coach123' };
+let currentCoach = '';
+let students = [];
+
+function storageKey() { return 'cd_students_' + currentCoach; }
+function load() { try { students = JSON.parse(localStorage.getItem(storageKey())) || []; } catch(e) { students = []; } }
+function save() { localStorage.setItem(storageKey(), JSON.stringify(students)); }
+
+// ── AUTH ──────────────────────────────────────────────────
+function doLogin() {
+  const u = document.getElementById('login-user').value.trim().toLowerCase();
+  const p = document.getElementById('login-pass').value;
+  if (USERS[u] && USERS[u] === p) {
+    currentCoach = u;
+    document.getElementById('login-err').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('tb-coach-name').textContent = u.charAt(0).toUpperCase() + u.slice(1);
+    document.getElementById('tb-week').textContent = weekLabel();
+    load();
+    renderTable();
+    scheduleAutoReport();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+  }
+}
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('login-user').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-pass').focus(); });
+
+function doLogout() {
+  currentCoach = '';
+  students = [];
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+}
+
+// ── HELPERS ──────────────────────────────────────────────
+function weekLabel() {
+  const now = new Date();
+  const day = now.getDay();
+  const mon = new Date(now); mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+  const fri = new Date(mon); fri.setDate(mon.getDate() + 4);
+  const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return `Week of ${fmt(mon)} – ${fmt(fri)}, ${fri.getFullYear()}`;
+}
+
+function activityLabel(n) {
+  const labels = ['', 'Actively in deal', 'Taking action', 'Starting to stall', 'Recently inactive', 'Long-term inactive'];
+  return labels[n] || '';
+}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  const d = new Date(str + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+// ── TABLE ─────────────────────────────────────────────────
+function renderTable() {
+  const tbody = document.getElementById('student-tbody');
+  // Stats
+  document.getElementById('stat-total').textContent = students.length;
+  document.getElementById('stat-deal').textContent = students.filter(s => s.activity == 1).length;
+  document.getElementById('stat-action').textContent = students.filter(s => s.activity == 2).length;
+  document.getElementById('stat-inactive').textContent = students.filter(s => s.activity >= 3).length;
+
+  if (!students.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="10">No students yet. Click "+ Add student" to get started.</td></tr>';
+    updateOutreachBadge();
+    return;
+  }
+  tbody.innerHTML = students.map(s => {
+    const bClass = 'b' + s.activity;
+    const podioCell = s.podio
+      ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener">Open Podio ↗</a>`
+      : `<span class="no-podio">—</span>`;
+    return `<tr>
+      <td><strong>${escHtml(s.name)}</strong></td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;">${escHtml(s.sid)}</td>
+      <td>${podioCell}</td>
+      <td>${escHtml(s.podioStatus || '—')}</td>
+      <td><span class="badge ${bClass}">${activityLabel(s.activity)}</span></td>
+      <td class="update-cell" title="${escHtml(s.update)}">${escHtml(s.update || '—')}</td>
+      <td class="date-cell">${fmtDate(s.lastContact)}</td>
+      <td class="date-cell">${fmtDate(s.nextOutreach)}</td>
+      <td style="font-size:12px;color:var(--text2);">${escHtml(s.pairedCoach || 'N/A')}</td>
+      <td>
+        <div class="row-actions">
+          <button class="btn-edit" onclick="openEditModal('${s.id}')">Edit</button>
+          <button class="btn-del" onclick="deleteStudent('${s.id}')">✕</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  updateOutreachBadge();
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── ADD / EDIT ────────────────────────────────────────────
+function openAddModal() {
+  document.getElementById('modal-title').textContent = 'Add student';
+  document.getElementById('edit-id').value = '';
+  ['f-name','f-id','f-podio','f-podio-status','f-coach','f-update','f-last-contact','f-next-outreach'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('f-activity').value = '2';
+  document.getElementById('student-modal').classList.add('open');
+}
+
+function openEditModal(id) {
+  const s = students.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('modal-title').textContent = 'Edit student';
+  document.getElementById('edit-id').value = s.id;
+  document.getElementById('f-name').value = s.name || '';
+  document.getElementById('f-id').value = s.sid || '';
+  document.getElementById('f-podio').value = s.podio || '';
+  document.getElementById('f-podio-status').value = s.podioStatus || '';
+  document.getElementById('f-activity').value = s.activity || '2';
+  document.getElementById('f-coach').value = s.pairedCoach || '';
+  document.getElementById('f-update').value = s.update || '';
+  document.getElementById('f-last-contact').value = s.lastContact || '';
+  document.getElementById('f-next-outreach').value = s.nextOutreach || '';
+  document.getElementById('student-modal').classList.add('open');
+}
+
+function saveStudent() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { alert('Student name is required.'); return; }
+  const editId = document.getElementById('edit-id').value;
+  const data = {
+    id: editId || uid(),
+    name,
+    sid: document.getElementById('f-id').value.trim(),
+    podio: document.getElementById('f-podio').value.trim(),
+    podioStatus: document.getElementById('f-podio-status').value.trim(),
+    activity: parseInt(document.getElementById('f-activity').value),
+    pairedCoach: document.getElementById('f-coach').value.trim(),
+    update: document.getElementById('f-update').value.trim(),
+    lastContact: document.getElementById('f-last-contact').value,
+    nextOutreach: document.getElementById('f-next-outreach').value,
+    updatedAt: new Date().toISOString(),
+  };
+  if (editId) {
+    const idx = students.findIndex(x => x.id === editId);
+    if (idx > -1) students[idx] = data;
+  } else {
+    students.push(data);
+  }
+  save();
+  renderTable();
+  closeModal('student-modal');
+}
+
+function deleteStudent(id) {
+  if (!confirm('Remove this student?')) return;
+  students = students.filter(x => x.id !== id);
+  save();
+  renderTable();
+}
+
+// ── MODALS ────────────────────────────────────────────────
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ── REPORT ────────────────────────────────────────────────
+function getWeekRange() {
+  const now = new Date();
+  const day = now.getDay();
+  const mon = new Date(now); mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+  const fri = new Date(mon); fri.setDate(mon.getDate() + 4);
+  return { from: mon.toISOString().slice(0,10), to: fri.toISOString().slice(0,10) };
+}
+
+function openReport() {
+  const range = getWeekRange();
+  document.getElementById('report-from').value = range.from;
+  document.getElementById('report-to').value = range.to;
+  renderReport();
+  document.getElementById('report-modal').classList.add('open');
+}
+
+function renderReport() {
+  const from = document.getElementById('report-from').value;
+  const to = document.getElementById('report-to').value;
+  const body = document.getElementById('report-body');
+  const fromLabel = from ? fmtDate(from) : '—';
+  const toLabel = to ? fmtDate(to) : '—';
+
+  if (!students.length) {
+    body.innerHTML = '<div class="report-empty">No students to report on yet.</div>';
+    return;
+  }
+
+  const groups = [
+    { label: 'Actively in a deal', filter: s => s.activity == 1 },
+    { label: 'Taking action', filter: s => s.activity == 2 },
+    { label: 'Starting to stall', filter: s => s.activity == 3 },
+    { label: 'Recently inactive', filter: s => s.activity == 4 },
+    { label: 'Long-term inactive', filter: s => s.activity == 5 },
+  ];
+
+  let html = `<div class="report-header-text">Weekly coaching report — ${fromLabel} to ${toLabel} &nbsp;·&nbsp; ${students.length} students &nbsp;·&nbsp; Coach: ${currentCoach.charAt(0).toUpperCase() + currentCoach.slice(1)}</div>`;
+  html += `<div style="display:grid;grid-template-columns:140px 130px 1fr;gap:8px;padding:0 0 6px;border-bottom:1px solid var(--border);margin-bottom:4px;">
+    <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Name</span>
+    <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Activity</span>
+    <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Status update</span>
+  </div>`;
+
+  groups.forEach(g => {
+    const list = students.filter(g.filter);
+    if (!list.length) return;
+    html += `<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:12px 0 6px;">${g.label}</div>`;
+    list.forEach(s => {
+      const bClass = 'b' + s.activity;
+      html += `<div class="report-row">
+        <div class="rr-name">${escHtml(s.name)}</div>
+        <div class="rr-badge"><span class="badge ${bClass}">${activityLabel(s.activity)}</span></div>
+        <div class="rr-update">${escHtml(s.update || 'No update entered.')}</div>
+      </div>`;
+    });
+  });
+
+  body.innerHTML = html;
+}
+
+function copyReport() {
+  const from = document.getElementById('report-from').value;
+  const to = document.getElementById('report-to').value;
+  const fromLabel = from ? fmtDate(from) : '—';
+  const toLabel = to ? fmtDate(to) : '—';
+  let text = `WEEKLY COACHING REPORT — ${fromLabel} to ${toLabel}\nCoach: ${currentCoach.charAt(0).toUpperCase() + currentCoach.slice(1)}\n\n`;
+  const groups = [
+    { label: 'Actively in a deal', filter: s => s.activity == 1 },
+    { label: 'Taking action', filter: s => s.activity == 2 },
+    { label: 'Starting to stall', filter: s => s.activity == 3 },
+    { label: 'Recently inactive', filter: s => s.activity == 4 },
+    { label: 'Long-term inactive', filter: s => s.activity == 5 },
+  ];
+  groups.forEach(g => {
+    const list = students.filter(g.filter);
+    if (!list.length) return;
+    text += `── ${g.label.toUpperCase()} ──\n`;
+    list.forEach(s => { text += `• ${s.name}: ${s.update || 'No update entered.'}\n`; });
+    text += '\n';
+  });
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.btn-copy');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy text', 2000);
+  });
+}
+
+// ── VOICE DICTATION ───────────────────────────────────────
+let recognition = null;
+let activeVoiceBtn = null;
+
+function startDictation(fieldId, btn) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { alert('Voice dictation is not supported in this browser. Please use Chrome.'); return; }
+
+  if (recognition) { recognition.stop(); return; }
+
+  if (activeVoiceBtn) { activeVoiceBtn.classList.remove('listening'); activeVoiceBtn.innerHTML = '<span class="mic-icon">🎤</span> Dictate'; }
+
+  recognition = new SpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  btn.classList.add('listening');
+  btn.innerHTML = '<span class="mic-icon">🔴</span> Listening…';
+  activeVoiceBtn = btn;
+
+  recognition.onresult = e => {
+    const transcript = e.results[0][0].transcript;
+    document.getElementById(fieldId).value = transcript;
+  };
+  recognition.onend = () => {
+    btn.classList.remove('listening');
+    btn.innerHTML = '<span class="mic-icon">🎤</span> Dictate';
+    recognition = null;
+    activeVoiceBtn = null;
+  };
+  recognition.onerror = () => {
+    btn.classList.remove('listening');
+    btn.innerHTML = '<span class="mic-icon">🎤</span> Dictate';
+    recognition = null;
+    activeVoiceBtn = null;
+  };
+  recognition.start();
+}
+
+// ── CSV IMPORT ────────────────────────────────────────────
+let csvParsedRows = [];
+
+function triggerCSVImport() {
+  document.getElementById('csv-file-input').value = '';
+  document.getElementById('csv-file-input').click();
+}
+
+function handleCSVImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) { alert('CSV file appears to be empty or has no data rows.'); return; }
+
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g,'_'));
+    csvParsedRows = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const vals = lines[i].split(',');
+      const row = {};
+      headers.forEach((h, idx) => { row[h] = (vals[idx] || '').trim(); });
+      csvParsedRows.push(row);
+    }
+
+    // Build preview
+    const fieldMap = {
+      name: 'name', student_id: 'sid', podio_link: 'podio',
+      podio_status: 'podioStatus', activity_level: 'activity',
+      status_update: 'update', last_contact: 'lastContact',
+      next_outreach: 'nextOutreach'
+    };
+
+    document.getElementById('csv-preview-msg').textContent =
+      `Found ${csvParsedRows.length} student${csvParsedRows.length !== 1 ? 's' : ''} ready to import.`;
+
+    const displayHeaders = ['Name','ID','Podio Status','Activity','Status Update','Last Contact','Next Outreach'];
+    document.getElementById('csv-preview-head').innerHTML =
+      '<tr>' + displayHeaders.map(h => `<th>${h}</th>`).join('') + '</tr>';
+
+    document.getElementById('csv-preview-body').innerHTML = csvParsedRows.map(row => {
+      return `<tr>
+        <td>${escHtml(row.name || '—')}</td>
+        <td style="font-family:'DM Mono',monospace">${escHtml(row.student_id || '—')}</td>
+        <td>${escHtml(row.podio_status || '—')}</td>
+        <td><span class="badge b${row.activity_level || 2}">${activityLabel(row.activity_level || 2)}</span></td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(row.status_update || '—')}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px;">${escHtml(row.last_contact || '—')}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px;">${escHtml(row.next_outreach || '—')}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('csv-modal').classList.add('open');
+  };
+  reader.readAsText(file);
+}
+
+function confirmCSVImport() {
+  const fieldMap = {
+    name: 'name', student_id: 'sid', podio_link: 'podio',
+    podio_status: 'podioStatus', activity_level: 'activity',
+    status_update: 'update', last_contact: 'lastContact',
+    next_outreach: 'nextOutreach'
+  };
+
+  let imported = 0;
+  csvParsedRows.forEach(row => {
+    if (!row.name) return; // skip empty name rows
+    const existing = students.find(s => s.sid && s.sid === row.student_id);
+    const data = {
+      id: existing ? existing.id : uid(),
+      name: row.name || '',
+      sid: row.student_id || '',
+      podio: row.podio_link || '',
+      podioStatus: row.podio_status || '',
+      activity: parseInt(row.activity_level) || 2,
+      pairedCoach: row.paired_coach || '',
+      update: row.status_update || '',
+      lastContact: row.last_contact || '',
+      nextOutreach: row.next_outreach || '',
+      updatedAt: new Date().toISOString(),
+    };
+    if (existing) {
+      const idx = students.findIndex(s => s.id === existing.id);
+      students[idx] = data;
+    } else {
+      students.push(data);
+    }
+    imported++;
+  });
+
+  save();
+  renderTable();
+  closeModal('csv-modal');
+  csvParsedRows = [];
+  alert(`✅ Successfully imported ${imported} student${imported !== 1 ? 's' : ''}.`);
+}
+
+  closeModal('csv-modal');
+  csvParsedRows = [];
+  alert(`✅ Successfully imported ${imported} student${imported !== 1 ? 's' : ''}.`);
+}
+
+// ── TABS ─────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelectorAll('.tab')[name === 'roster' ? 0 : 1].classList.add('active');
+  if (name === 'outreach') renderOutreach();
+}
+
+// ── OUTREACH CADENCE ─────────────────────────────────────
+const CADENCE = { 1: 2, 2: 7, 3: 3, 4: 14, 5: 30 };
+
+function daysSince(dateStr) {
+  if (!dateStr) return 999;
+  const last = new Date(dateStr + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.floor((today - last) / (1000 * 60 * 60 * 24));
+}
+
+function outreachUrgency(student) {
+  const cadence = CADENCE[student.activity] || 7;
+  const days = daysSince(student.lastContact);
+  const overdueDays = days - cadence;
+  if (overdueDays > 0) return { level: 'urgent', days, overdueDays, cadence };
+  if (overdueDays === 0) return { level: 'due', days, overdueDays: 0, cadence };
+  if (overdueDays >= -2) return { level: 'soon', days, overdueDays, cadence };
+  return null;
+}
+
+function renderOutreach() {
+  const today = new Date();
+  document.getElementById('outreach-date-label').textContent =
+    today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+  const toContact = [];
+  students.forEach(s => {
+    const u = outreachUrgency(s);
+    if (u) toContact.push({ ...s, urgency: u });
+  });
+
+  const orderMap = { urgent: 0, due: 1, soon: 2 };
+  toContact.sort((a, b) => orderMap[a.urgency.level] - orderMap[b.urgency.level] || b.urgency.overdueDays - a.urgency.overdueDays);
+
+  const urgentCount = toContact.filter(s => s.urgency.level !== 'soon').length;
+  const badge = document.getElementById('outreach-count');
+  if (urgentCount > 0) { badge.textContent = urgentCount; badge.style.display = 'inline-block'; }
+  else { badge.style.display = 'none'; }
+
+  document.getElementById('ical-btn').style.display = toContact.length ? 'block' : 'none';
+
+  const wrap = document.getElementById('outreach-list-wrap');
+  if (!toContact.length) {
+    wrap.innerHTML = '<div class="outreach-empty">🎉 You\'re all caught up! No outreach needed today.</div>';
+    return;
+  }
+
+  wrap.innerHTML = toContact.map(s => {
+    const u = s.urgency;
+    const lvl = u.level;
+    let daysLabel = lvl === 'urgent'
+      ? `${u.overdueDays} day${u.overdueDays !== 1 ? 's' : ''} overdue`
+      : lvl === 'due' ? 'Due today'
+      : `Due in ${Math.abs(u.overdueDays)} day${Math.abs(u.overdueDays) !== 1 ? 's' : ''}`;
+    const nextScheduled = s.nextOutreach ? `Next call: ${fmtDate(s.nextOutreach)}` : 'No call scheduled';
+    const podioBtn = s.podio ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener">Open Podio ↗</a>` : '';
+    return `<div class="outreach-card ${lvl}">
+      <div>
+        <div class="oc-name">${escHtml(s.name)}</div>
+        <div class="oc-meta">
+          <span class="badge b${s.activity}">${activityLabel(s.activity)}</span>
+          <span style="font-size:12px;color:var(--text2);">${escHtml(s.update || 'No update entered')}</span>
+          <span style="font-size:11px;color:var(--text3);">${nextScheduled}</span>
+          ${podioBtn}
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div class="oc-days ${lvl}">${daysLabel}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px;">Every ${u.cadence} day${u.cadence !== 1 ? 's' : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateOutreachBadge() {
+  const urgentCount = students.filter(s => {
+    const u = outreachUrgency(s);
+    return u && u.level !== 'soon';
+  }).length;
+  const badge = document.getElementById('outreach-count');
+  if (urgentCount > 0) { badge.textContent = urgentCount; badge.style.display = 'inline-block'; }
+  else { badge.style.display = 'none'; }
+}
+
+// ── iCAL DOWNLOAD ─────────────────────────────────────────
+function downloadIcal() {
+  const toContact = students.map(s => ({ ...s, urgency: outreachUrgency(s) })).filter(s => s.urgency);
+  if (!toContact.length) { alert('No students need outreach today.'); return; }
+  const now = new Date();
+  const dateStr = now.toISOString().replace(/[-:]/g,'').split('.')[0] + 'Z';
+  const today = now.toISOString().slice(0,10).replace(/-/g,'');
+  const description = toContact.map(s =>
+    `• ${s.name}: ${s.update || 'No update'} — ${s.urgency.level === 'urgent' ? s.urgency.overdueDays + ' days overdue' : 'Due today'}`
+  ).join('\\n');
+  const ical = [
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Coaching Dashboard//EN',
+    'CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT',
+    `UID:outreach-${today}@coachingdashboard`,
+    `DTSTAMP:${dateStr}`,
+    `DTSTART;TZID=America/Los_Angeles:${today}T090000`,
+    `DTEND;TZID=America/Los_Angeles:${today}T100000`,
+    `SUMMARY:Student Outreach — ${toContact.length} student${toContact.length !== 1 ? 's' : ''}`,
+    `DESCRIPTION:Students to contact today:\\n${description}`,
+    'BEGIN:VALARM','TRIGGER:-PT15M','ACTION:DISPLAY',
+    'DESCRIPTION:Student outreach reminder','END:VALARM',
+    'END:VEVENT','END:VCALENDAR'
+  ].join('\r\n');
+  const blob = new Blob([ical], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url;
+  a.download = `outreach-${today}.ics`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function scheduleAutoReport() {
+  function checkAutoReport() {
+    const now = new Date();
+    const pst = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+    const isLastAutoKey = 'cd_last_auto_' + currentCoach;
+    const lastAuto = localStorage.getItem(isLastAutoKey);
+    const thisWeekFri = (() => {
+      const d = new Date(pst);
+      const day = d.getDay();
+      d.setDate(d.getDate() + (5 - day + 7) % 7);
+      d.setHours(12, 0, 0, 0);
+      return d.toDateString();
+    })();
+    if (pst.getDay() === 5 && pst.getHours() >= 12 && lastAuto !== thisWeekFri) {
+      localStorage.setItem(isLastAutoKey, thisWeekFri);
+      openReport();
+    }
+  }
+  checkAutoReport();
+  setInterval(checkAutoReport, 60 * 1000);
+}
+</script>
+</body>
+</html>
