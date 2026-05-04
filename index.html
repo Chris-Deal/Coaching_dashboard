@@ -246,7 +246,7 @@
       <input type="file" id="csv-file-input" accept=".csv" style="display:none;position:absolute;" />
 
       <!-- Bulk dictate status bar -->
-      <div id="bulk-status" style="display:none;background:var(--accent-bg);border:1px solid #C5D3F8;border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--accent);display:flex;align-items:center;gap:10px;">
+      <div id="bulk-status" style="display:none;background:var(--accent-bg);border:1px solid #C5D3F8;border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--accent);">
         <span id="bulk-status-text">Listening…</span>
       </div>
 
@@ -658,23 +658,25 @@ function renderReport() {
     { label: 'Long-term inactive', filter: s => s.activity == 5 },
   ];
 
-  let html = `<div class="report-header-text">Weekly coaching report — ${fromLabel} to ${toLabel} &nbsp;·&nbsp; ${students.length} students &nbsp;·&nbsp; Coach: ${currentCoach.charAt(0).toUpperCase() + currentCoach.slice(1)}</div>`;
-  html += `<div style="display:grid;grid-template-columns:140px 130px 1fr;gap:8px;padding:0 0 6px;border-bottom:1px solid var(--border);margin-bottom:4px;">
-    <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Name</span>
-    <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Activity</span>
-    <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Status update</span>
-  </div>`;
+  let html = `<div class="report-header-text">Weekly Coaching Report &nbsp;·&nbsp; ${fromLabel} to ${toLabel} &nbsp;·&nbsp; ${students.length} students &nbsp;·&nbsp; Coach: Chris</div>`;
 
   groups.forEach(g => {
     const list = students.filter(g.filter);
     if (!list.length) return;
-    html += `<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:12px 0 6px;">${g.label}</div>`;
+    html += `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--text3);margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border);">${g.label} (${list.length})</div>`;
     list.forEach(s => {
       const bClass = 'b' + s.activity;
-      html += `<div class="report-row">
-        <div class="rr-name">${escHtml(s.name)}</div>
-        <div class="rr-badge"><span class="badge ${bClass}">${activityLabel(s.activity)}</span></div>
-        <div class="rr-update">${escHtml(s.update || 'No update entered.')} ${s.scheduledAppt ? `· <span style="color:var(--green)">Appt: ${fmtDate(s.scheduledAppt)}</span>` : s.nextOutreach ? `· Next attempt: ${fmtDate(s.nextOutreach)}` : ''}</div>
+      const nextLine = s.scheduledAppt
+        ? `<span style="color:var(--green);font-size:11px;">📅 Appt: ${fmtDate(s.scheduledAppt)}</span>`
+        : s.nextOutreach
+        ? `<span style="color:var(--text3);font-size:11px;">📞 Next attempt: ${fmtDate(s.nextOutreach)}</span>`
+        : '';
+      html += `<div style="padding:8px 0;border-bottom:1px solid var(--border);display:grid;grid-template-columns:170px 1fr;gap:12px;align-items:start;">
+        <div>
+          <div style="font-weight:600;font-size:13px;color:var(--text);">${escHtml(s.name)}</div>
+          <div style="margin-top:3px;">${nextLine}</div>
+        </div>
+        <div style="font-size:13px;color:var(--text2);">${escHtml(s.update || 'No update entered.')}</div>
       </div>`;
     });
   });
