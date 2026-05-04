@@ -425,7 +425,7 @@ function save() { localStorage.setItem(storageKey(), JSON.stringify(students)); 
 
 // ── AUTH ──────────────────────────────────────────────────
 function doLogin() {
-  const u = document.getElementById('login-user').value.trim().toLowerCase();
+  const u = document.getElementById('login-user').value.trim().toLowerCase().replace(/\s/g,'');
   const p = document.getElementById('login-pass').value.trim();
   if (USERS[u] && USERS[u] === p) {
     currentCoach = u;
