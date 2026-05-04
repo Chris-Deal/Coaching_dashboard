@@ -239,10 +239,16 @@
         <div class="toolbar-right">
           <button class="btn-sec" onclick="openReport()">Weekly report</button>
           <button class="btn-sec" onclick="document.getElementById('csv-file-input').click()">Import CSV</button>
+          <button class="btn-voice" id="bulk-dictate-btn" onclick="startBulkDictation()" style="padding:7px 14px;border-radius:10px;font-size:13px;"><span class="mic-icon">🎤</span> Bulk update</button>
           <button class="btn-dark" onclick="openAddModal()">+ Add student</button>
         </div>
       </div>
       <input type="file" id="csv-file-input" accept=".csv" style="display:none;position:absolute;" />
+
+      <!-- Bulk dictate status bar -->
+      <div id="bulk-status" style="display:none;background:var(--accent-bg);border:1px solid #C5D3F8;border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--accent);display:flex;align-items:center;gap:10px;">
+        <span id="bulk-status-text">Listening…</span>
+      </div>
 
     <!-- Table -->
     <div class="table-wrap">
@@ -771,6 +777,113 @@ function startDictation(fieldId, btn) {
     activeVoiceBtn = null;
   };
   recognition.start();
+}
+
+// ── BULK DICTATION ────────────────────────────────────────
+let bulkRecognition = null;
+
+function startBulkDictation() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { alert('Voice dictation requires Chrome.'); return; }
+
+  const btn = document.getElementById('bulk-dictate-btn');
+  const statusBar = document.getElementById('bulk-status');
+  const statusText = document.getElementById('bulk-status-text');
+
+  if (bulkRecognition) {
+    bulkRecognition.stop();
+    return;
+  }
+
+  bulkRecognition = new SpeechRecognition();
+  bulkRecognition.lang = 'en-US';
+  bulkRecognition.interimResults = false;
+  bulkRecognition.maxAlternatives = 1;
+
+  btn.classList.add('listening');
+  btn.innerHTML = '<span class="mic-icon">🔴</span> Listening… (click to stop)';
+  statusBar.style.display = 'flex';
+  statusText.textContent = 'Listening — rattle off your student updates now…';
+
+  bulkRecognition.onresult = async e => {
+    const transcript = e.results[0][0].transcript;
+    btn.innerHTML = '<span class="mic-icon">✨</span> Parsing updates…';
+    statusText.textContent = 'Got it — Claude is parsing your updates now…';
+
+    const studentNames = students.map(s => s.name).join(', ');
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: `You are a coaching assistant. The user will speak a bulk update mentioning multiple students by name and giving an update for each. 
+Your job is to:
+1. Match each mentioned student to the closest name in this list: ${studentNames}
+2. Condense each update into a single crisp line under 20 words
+3. Return ONLY a JSON array like this, nothing else:
+[{"name": "Exact Name From List", "update": "Condensed one-line update"}]
+If a student is mentioned but not in the list, skip them. Return only valid JSON, no markdown, no explanation.`,
+          messages: [{ role: 'user', content: transcript }]
+        })
+      });
+
+      const data = await response.json();
+      const raw = data.content?.[0]?.text?.trim();
+
+      let updates;
+      try {
+        updates = JSON.parse(raw.replace(/```json|```/g, '').trim());
+      } catch(e) {
+        throw new Error('Could not parse Claude response: ' + raw);
+      }
+
+      let matched = 0;
+      updates.forEach(u => {
+        const student = students.find(s => s.name.toLowerCase() === u.name.toLowerCase());
+        if (student && u.update) {
+          student.update = u.update;
+          student.updatedAt = new Date().toISOString();
+          matched++;
+        }
+      });
+
+      save();
+      renderTable();
+
+      btn.classList.remove('listening');
+      btn.innerHTML = '<span class="mic-icon">🎤</span> Bulk update';
+      statusText.textContent = `✅ Updated ${matched} student${matched !== 1 ? 's' : ''} successfully!`;
+      setTimeout(() => { statusBar.style.display = 'none'; }, 4000);
+
+    } catch(err) {
+      btn.classList.remove('listening');
+      btn.innerHTML = '<span class="mic-icon">🎤</span> Bulk update';
+      statusText.textContent = '❌ Something went wrong — please try again.';
+      console.error(err);
+      setTimeout(() => { statusBar.style.display = 'none'; }, 4000);
+    }
+  };
+
+  bulkRecognition.onend = () => {
+    bulkRecognition = null;
+    if (btn.innerHTML.includes('Listening')) {
+      btn.classList.remove('listening');
+      btn.innerHTML = '<span class="mic-icon">🎤</span> Bulk update';
+      statusBar.style.display = 'none';
+    }
+  };
+
+  bulkRecognition.onerror = () => {
+    bulkRecognition = null;
+    btn.classList.remove('listening');
+    btn.innerHTML = '<span class="mic-icon">🎤</span> Bulk update';
+    statusBar.style.display = 'none';
+  };
+
+  bulkRecognition.start();
 }
 
 // ── CSV IMPORT ────────────────────────────────────────────
