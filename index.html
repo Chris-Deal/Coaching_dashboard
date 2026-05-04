@@ -76,8 +76,8 @@
   .btn-dark:hover { opacity: 0.85; }
 
   /* ── TABLE ── */
-  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow-x: auto; overflow-y: visible; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 800px; }
   thead { background: var(--surface2); }
   th { padding: 10px 12px; text-align: left; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap; }
   td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text); }
@@ -249,20 +249,18 @@
       <table>
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Podio</th>
-            <th>Podio status</th>
-            <th>Activity level</th>
-            <th>Status update</th>
-            <th>Last contact attempt</th>
-            <th>Next scheduled appt</th>
-            <th>Next contact attempt</th>
-            <th>Paired coach</th>
-            <th></th>
+            <th style="min-width:160px;">Student</th>
+            <th style="min-width:90px;">Podio status</th>
+            <th style="min-width:130px;">Activity level</th>
+            <th style="min-width:180px;">Status update</th>
+            <th style="min-width:110px;">Last contact</th>
+            <th style="min-width:110px;">Next appt</th>
+            <th style="min-width:110px;">Next attempt</th>
+            <th style="width:70px;"></th>
           </tr>
         </thead>
         <tbody id="student-tbody">
-          <tr class="empty-row"><td colspan="9">No students yet. Click "+ Add student" to get started.</td></tr>
+          <tr class="empty-row"><td colspan="8">No students yet. Click "+ Add student" to get started.</td></tr>
         </tbody>
       </table>
     </div>
@@ -509,25 +507,31 @@ function renderTable() {
   document.getElementById('stat-inactive').textContent = students.filter(s => s.activity >= 3).length;
 
   if (!students.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="9">No students yet. Click "+ Add student" to get started.</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No students yet. Click "+ Add student" to get started.</td></tr>';
     updateOutreachBadge();
     return;
   }
   tbody.innerHTML = students.map(s => {
     const bClass = 'b' + s.activity;
-    const podioCell = s.podio
-      ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener">Open Podio ↗</a>`
-      : `<span class="no-podio">—</span>`;
+    const podioBtn = s.podio
+      ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener" style="margin-top:4px;display:inline-block;">Open Podio ↗</a>`
+      : '';
+    const pairedLabel = s.pairedCoach && s.pairedCoach !== 'N/A'
+      ? `<div style="font-size:11px;color:var(--text3);margin-top:3px;">👤 ${escHtml(s.pairedCoach)}</div>`
+      : '';
+    const updateText = s.update ? (s.update.length > 45 ? s.update.slice(0, 45) + '…' : s.update) : '—';
     return `<tr>
-      <td><strong>${escHtml(s.name)}</strong></td>
-      <td>${podioCell}</td>
-      <td>${escHtml(s.podioStatus || '—')}</td>
+      <td style="min-width:160px;">
+        <div style="font-weight:500;font-size:13px;">${escHtml(s.name)}</div>
+        ${podioBtn}
+        ${pairedLabel}
+      </td>
+      <td style="font-size:12px;">${escHtml(s.podioStatus || '—')}</td>
       <td><span class="badge ${bClass}">${activityLabel(s.activity)}</span></td>
-      <td class="update-cell" title="${escHtml(s.update)}">${escHtml(s.update || '—')}</td>
+      <td style="font-size:12px;color:var(--text2);max-width:180px;" title="${escHtml(s.update || '')}">${escHtml(updateText)}</td>
       <td class="date-cell">${fmtDate(s.lastContact)}</td>
       <td class="date-cell">${s.scheduledAppt ? `<span style="color:var(--green);font-weight:500;">${fmtDate(s.scheduledAppt)}</span>` : '—'}</td>
       <td class="date-cell">${s.nextOutreach ? fmtDate(s.nextOutreach) : '—'}</td>
-      <td style="font-size:12px;color:var(--text2);">${escHtml(s.pairedCoach || 'N/A')}</td>
       <td>
         <div class="row-actions">
           <button class="btn-edit" onclick="openEditModal('${s.id}')">Edit</button>
