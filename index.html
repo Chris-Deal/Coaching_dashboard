@@ -62,7 +62,11 @@
 
   /* ── STATS ── */
   .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.5rem; }
-  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; transition: all 0.15s; }
+  .stat:hover { border-color: var(--border2); }
+  .stat.active-filter { border-color: var(--accent); background: var(--accent-bg); }
+  .stat.active-filter .stat-label { color: var(--accent); }
+  .stat.active-filter .stat-val { color: var(--accent); }
   .stat-label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
   .stat-val { font-size: 28px; font-weight: 600; color: var(--text); font-family: 'DM Mono', monospace; }
 
@@ -79,7 +83,10 @@
   .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow-x: auto; overflow-y: visible; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 800px; }
   thead { background: var(--surface2); }
-  th { padding: 10px 12px; text-align: left; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { padding: 10px 12px; text-align: left; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; }
+  th:hover { color: var(--text2); }
+  th.sort-asc::after { content: ' ↑'; color: var(--accent); }
+  th.sort-desc::after { content: ' ↓'; color: var(--accent); }
   td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text); }
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: var(--bg); }
@@ -93,6 +100,7 @@
   .b3 { background: var(--amber-bg); color: var(--amber); } .b3::before { background: var(--amber); }
   .b4 { background: var(--orange-bg); color: var(--orange); } .b4::before { background: var(--orange); }
   .b5 { background: var(--red-bg); color: var(--red); } .b5::before { background: var(--red); }
+  .b6 { background: var(--surface2); color: var(--text3); } .b6::before { background: var(--text3); }
 
   .podio-btn { display: inline-block; background: var(--accent-bg); color: var(--accent); border: 1px solid #C5D3F8; border-radius: 7px; padding: 3px 10px; font-size: 11px; font-weight: 500; text-decoration: none; cursor: pointer; white-space: nowrap; }
   .podio-btn:hover { background: #dde6fc; }
@@ -219,11 +227,12 @@
 
   <div class="main">
     <!-- Stats -->
-    <div class="stats">
-      <div class="stat"><div class="stat-label">Total students</div><div class="stat-val" id="stat-total">0</div></div>
-      <div class="stat"><div class="stat-label">In a deal</div><div class="stat-val" id="stat-deal">0</div></div>
-      <div class="stat"><div class="stat-label">Taking action</div><div class="stat-val" id="stat-action">0</div></div>
-      <div class="stat"><div class="stat-label">Inactive / stalling</div><div class="stat-val" id="stat-inactive">0</div></div>
+    <div class="stats" style="grid-template-columns:repeat(5,1fr);">
+      <div class="stat" id="stat-card-all" onclick="setStatFilter('all')" style="cursor:pointer;" title="Show all students"><div class="stat-label">Total students</div><div class="stat-val" id="stat-total">0</div></div>
+      <div class="stat" id="stat-card-deal" onclick="setStatFilter('deal')" style="cursor:pointer;" title="Filter: In a deal"><div class="stat-label">In a deal</div><div class="stat-val" id="stat-deal">0</div></div>
+      <div class="stat" id="stat-card-action" onclick="setStatFilter('action')" style="cursor:pointer;" title="Filter: Taking action"><div class="stat-label">Taking action</div><div class="stat-val" id="stat-action">0</div></div>
+      <div class="stat" id="stat-card-inactive" onclick="setStatFilter('inactive')" style="cursor:pointer;" title="Filter: Inactive/stalling"><div class="stat-label">Inactive / stalling</div><div class="stat-val" id="stat-inactive">0</div></div>
+      <div class="stat" id="stat-card-onhold" onclick="setStatFilter('onhold')" style="cursor:pointer;" title="Filter: On hold"><div class="stat-label">On hold</div><div class="stat-val" id="stat-onhold">0</div></div>
     </div>
 
     <!-- Tabs -->
@@ -245,6 +254,21 @@
       </div>
       <input type="file" id="csv-file-input" accept=".csv" style="display:none;position:absolute;" />
 
+      <!-- Search & filter bar -->
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+        <input type="text" id="search-input" placeholder="🔍  Search students…" oninput="renderTable()" style="flex:1;min-width:180px;border:1px solid var(--border);border-radius:var(--radius);padding:7px 12px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--text);outline:none;" />
+        <select id="filter-activity" onchange="renderTable()" style="border:1px solid var(--border);border-radius:var(--radius);padding:7px 12px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">
+          <option value="">All activity levels</option>
+          <option value="1">1 — Actively in a deal</option>
+          <option value="2">2 — Taking action</option>
+          <option value="3">3 — Starting to stall</option>
+          <option value="4">4 — Recently inactive</option>
+          <option value="5">5 — Long-term inactive</option>
+          <option value="6">On hold</option>
+        </select>
+        <button class="btn-sec" onclick="clearFilters()" id="clear-filters-btn" style="display:none;">✕ Clear filters</button>
+      </div>
+
       <!-- Bulk dictate status bar -->
       <div id="bulk-status" style="display:none;background:var(--accent-bg);border:1px solid #C5D3F8;border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--accent);">
         <span id="bulk-status-text">Listening…</span>
@@ -255,13 +279,13 @@
       <table>
         <thead>
           <tr>
-            <th style="min-width:160px;">Student</th>
-            <th style="min-width:90px;">Podio status</th>
-            <th style="min-width:130px;">Activity level</th>
-            <th style="min-width:180px;">Status update</th>
-            <th style="min-width:110px;">Last contact</th>
-            <th style="min-width:110px;">Next appt</th>
-            <th style="min-width:110px;">Next attempt</th>
+            <th style="min-width:160px;" onclick="sortBy('name')">Student</th>
+            <th style="min-width:90px;" onclick="sortBy('podioStatus')">Podio status</th>
+            <th style="min-width:130px;" onclick="sortBy('activity')">Activity level</th>
+            <th style="min-width:180px;" onclick="sortBy('update')">Status update</th>
+            <th style="min-width:110px;" onclick="sortBy('lastContact')">Last contact</th>
+            <th style="min-width:110px;" onclick="sortBy('scheduledAppt')">Next appt</th>
+            <th style="min-width:110px;" onclick="sortBy('nextOutreach')">Next attempt</th>
             <th style="width:70px;"></th>
           </tr>
         </thead>
@@ -298,6 +322,15 @@
       </div>
 
       <div id="outreach-list-wrap"></div>
+
+      <!-- On Hold Section -->
+      <div style="margin-top:1.5rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);" onclick="toggleOnHold()">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);">⏸ On hold students <span id="onhold-count-label" style="color:var(--text3);font-weight:400;"></span></div>
+          <div id="onhold-toggle-icon" style="font-size:12px;color:var(--text3);">▶ Show</div>
+        </div>
+        <div id="onhold-list" style="display:none;margin-top:4px;"></div>
+      </div>
     </div><!-- end tab-outreach -->
 
   </div><!-- end main -->
@@ -330,13 +363,18 @@
         </div>
         <div class="fg">
           <label>Activity level</label>
-          <select id="f-activity">
+          <select id="f-activity" onchange="toggleCheckBack()">
             <option value="1">1 — Actively in a deal</option>
             <option value="2">2 — Taking action, no deal yet</option>
             <option value="3">3 — Starting to stall</option>
             <option value="4">4 — Recently inactive</option>
             <option value="5">5 — Long-term inactive</option>
+            <option value="6">On hold</option>
           </select>
+        </div>
+        <div class="fg" id="checkback-field" style="display:none;">
+          <label>Check back date (auto-resurface)</label>
+          <input type="date" id="f-checkback" />
         </div>
         <div class="fg">
           <label>Paired coach</label>
@@ -491,7 +529,7 @@ function weekLabel() {
 }
 
 function activityLabel(n) {
-  const labels = ['', 'Actively in deal', 'Taking action', 'Starting to stall', 'Recently inactive', 'Long-term inactive'];
+  const labels = ['', 'Actively in deal', 'Taking action', 'Starting to stall', 'Recently inactive', 'Long-term inactive', 'On hold'];
   return labels[n] || '';
 }
 
@@ -503,21 +541,85 @@ function fmtDate(str) {
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 
+// ── SORT & FILTER STATE ───────────────────────────────────
+let sortField = 'name';
+let sortDir = 'asc';
+let statFilter = 'all';
+
+function setStatFilter(filter) {
+  statFilter = statFilter === filter ? 'all' : filter;
+  document.getElementById('filter-activity').value = '';
+  document.querySelectorAll('.stat').forEach(el => el.classList.remove('active-filter'));
+  if (statFilter !== 'all') {
+    const cardId = { deal: 'stat-card-deal', action: 'stat-card-action', inactive: 'stat-card-inactive', onhold: 'stat-card-onhold' }[statFilter];
+    if (cardId) document.getElementById(cardId).classList.add('active-filter');
+  }
+  renderTable();
+}
+
+function sortBy(field) {
+  if (sortField === field) { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
+  else { sortField = field; sortDir = 'asc'; }
+  renderTable();
+}
+
+function clearFilters() {
+  statFilter = 'all';
+  document.getElementById('search-input').value = '';
+  document.getElementById('filter-activity').value = '';
+  document.querySelectorAll('.stat').forEach(el => el.classList.remove('active-filter'));
+  renderTable();
+}
+
 // ── TABLE ─────────────────────────────────────────────────
 function renderTable() {
   const tbody = document.getElementById('student-tbody');
-  // Stats
   document.getElementById('stat-total').textContent = students.length;
   document.getElementById('stat-deal').textContent = students.filter(s => s.activity == 1).length;
   document.getElementById('stat-action').textContent = students.filter(s => s.activity == 2).length;
-  document.getElementById('stat-inactive').textContent = students.filter(s => s.activity >= 3).length;
+  document.getElementById('stat-inactive').textContent = students.filter(s => s.activity >= 3 && s.activity <= 5).length;
+  document.getElementById('stat-onhold').textContent = students.filter(s => s.activity == 6).length;
 
-  if (!students.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No students yet. Click "+ Add student" to get started.</td></tr>';
+  // Update sort indicators
+  document.querySelectorAll('th').forEach(th => { th.classList.remove('sort-asc','sort-desc'); });
+  const fields = ['name','podioStatus','activity','update','lastContact','scheduledAppt','nextOutreach'];
+  const thIdx = fields.indexOf(sortField);
+  const ths = document.querySelectorAll('thead th');
+  if (thIdx >= 0 && ths[thIdx]) ths[thIdx].classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+
+  // Apply filters
+  const search = (document.getElementById('search-input')?.value || '').toLowerCase();
+  const actFilter = document.getElementById('filter-activity')?.value || '';
+  let filtered = students.filter(s => {
+    if (search && !s.name.toLowerCase().includes(search)) return false;
+    if (actFilter && s.activity != actFilter) return false;
+    if (statFilter === 'deal' && s.activity != 1) return false;
+    if (statFilter === 'action' && s.activity != 2) return false;
+    if (statFilter === 'inactive' && (s.activity < 3 || s.activity > 5)) return false;
+    if (statFilter === 'onhold' && s.activity != 6) return false;
+    return true;
+  });
+
+  // Apply sort
+  filtered.sort((a, b) => {
+    let va = a[sortField] || '', vb = b[sortField] || '';
+    if (sortField === 'activity') { va = parseInt(va); vb = parseInt(vb); }
+    else { va = String(va).toLowerCase(); vb = String(vb).toLowerCase(); }
+    if (va < vb) return sortDir === 'asc' ? -1 : 1;
+    if (va > vb) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // Show/hide clear filters button
+  const hasFilter = search || actFilter || statFilter !== 'all';
+  document.getElementById('clear-filters-btn').style.display = hasFilter ? 'block' : 'none';
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">${students.length ? 'No students match your filters.' : 'No students yet. Click "+ Add student" to get started.'}</td></tr>`;
     updateOutreachBadge();
     return;
   }
-  tbody.innerHTML = students.map(s => {
+  tbody.innerHTML = filtered.map(s => {
     const bClass = 'b' + s.activity;
     const podioBtn = s.podio
       ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener" style="margin-top:4px;display:inline-block;">Open Podio ↗</a>`
@@ -554,10 +656,15 @@ function escHtml(str) {
 }
 
 // ── ADD / EDIT ────────────────────────────────────────────
+function toggleCheckBack() {
+  const val = document.getElementById('f-activity').value;
+  document.getElementById('checkback-field').style.display = val == 6 ? 'flex' : 'none';
+}
+
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'Add student';
   document.getElementById('edit-id').value = '';
-  ['f-name','f-podio','f-podio-status','f-coach','f-update','f-last-contact','f-scheduled-appt','f-next-outreach'].forEach(id => {
+  ['f-name','f-podio','f-podio-status','f-coach','f-update','f-last-contact','f-scheduled-appt','f-next-outreach','f-checkback'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('f-activity').value = '2';
@@ -578,6 +685,8 @@ function openEditModal(id) {
   document.getElementById('f-last-contact').value = s.lastContact || '';
   document.getElementById('f-scheduled-appt').value = s.scheduledAppt || '';
   document.getElementById('f-next-outreach').value = s.nextOutreach || '';
+  document.getElementById('f-checkback').value = s.checkBack || '';
+  toggleCheckBack();
   document.getElementById('student-modal').classList.add('open');
 }
 
@@ -596,6 +705,7 @@ function saveStudent() {
     lastContact: document.getElementById('f-last-contact').value,
     scheduledAppt: document.getElementById('f-scheduled-appt').value,
     nextOutreach: document.getElementById('f-next-outreach').value,
+    checkBack: document.getElementById('f-checkback').value,
     updatedAt: new Date().toISOString(),
   };
   if (editId) {
@@ -921,7 +1031,9 @@ function handleCSVImport(event) {
     }
 
     function parseActivity(v) {
-      const m = String(v||'').match(/(\d)/);
+      const str = String(v||'').toLowerCase();
+      if (str.includes('hold')) return 6;
+      const m = str.match(/(\d)/);
       return m ? parseInt(m[1]) : 2;
     }
 
@@ -990,6 +1102,14 @@ function daysSince(dateStr) {
 }
 
 function outreachUrgency(student) {
+  // On hold — only resurface if check-back date has passed
+  if (student.activity == 6) {
+    if (!student.checkBack) return null;
+    const checkBack = new Date(student.checkBack + 'T00:00:00');
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (checkBack > today) return null;
+    return { level: 'urgent', days: 0, overdueDays: 1, cadence: 0, resurfaced: true };
+  }
   const cadence = CADENCE[student.activity] || 7;
   const days = daysSince(student.lastContact);
   const overdueDays = days - cadence;
@@ -1023,14 +1143,46 @@ function renderOutreach() {
   const wrap = document.getElementById('outreach-list-wrap');
   if (!toContact.length) {
     wrap.innerHTML = '<div class="outreach-empty">🎉 You\'re all caught up! No outreach needed today.</div>';
-    return;
+  } else {
+    wrap.innerHTML = toContact.map(s => {
+  document.getElementById('onhold-count-label').textContent = `(${onHoldStudents.length})`;
+  const onHoldList = document.getElementById('onhold-list');
+  if (!onHoldStudents.length) {
+    onHoldList.innerHTML = '<div style="padding:12px;font-size:13px;color:var(--text3);">No students currently on hold.</div>';
+  } else {
+    onHoldList.innerHTML = onHoldStudents.map(s => {
+      const checkBackLabel = s.checkBack
+        ? `<span style="color:var(--accent);font-size:11px;">📅 Check back: ${fmtDate(s.checkBack)}</span>`
+        : `<span style="color:var(--text3);font-size:11px;">No check-back date set</span>`;
+      const podioBtn = s.podio ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener">Open Podio ↗</a>` : '';
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--text3);border-radius:var(--radius);padding:12px 16px;margin-bottom:6px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;">
+        <div>
+          <div style="font-weight:500;font-size:13px;">${escHtml(s.name)}</div>
+          <div style="margin-top:4px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            ${checkBackLabel}
+            <span style="font-size:12px;color:var(--text2);">${escHtml(s.update || 'No update entered')}</span>
+            ${podioBtn}
+          </div>
+        </div>
+        <button class="btn-edit" onclick="openEditModal('${s.id}')">Edit</button>
+      </div>`;
+    }).join('');
   }
+}
 
-  wrap.innerHTML = toContact.map(s => {
+function toggleOnHold() {
+  const list = document.getElementById('onhold-list');
+  const icon = document.getElementById('onhold-toggle-icon');
+  const isHidden = list.style.display === 'none';
+  list.style.display = isHidden ? 'block' : 'none';
+  icon.textContent = isHidden ? '▼ Hide' : '▶ Show';
+}
+
+  // student outreach cards
     const u = s.urgency;
     const lvl = u.level;
-    let daysLabel = lvl === 'urgent'
-      ? `${u.overdueDays} day${u.overdueDays !== 1 ? 's' : ''} overdue`
+    let daysLabel = s.urgency.resurfaced ? '⏸ Check-back date reached!'
+      : lvl === 'urgent' ? `${u.overdueDays} day${u.overdueDays !== 1 ? 's' : ''} overdue`
       : lvl === 'due' ? 'Due today'
       : `Due in ${Math.abs(u.overdueDays)} day${Math.abs(u.overdueDays) !== 1 ? 's' : ''}`;
     const nextScheduled = s.scheduledAppt
@@ -1049,10 +1201,37 @@ function renderOutreach() {
       </div>
       <div style="text-align:right;flex-shrink:0;">
         <div class="oc-days ${lvl}">${daysLabel}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px;">Every ${u.cadence} day${u.cadence !== 1 ? 's' : ''}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px;">${u.cadence ? `Every ${u.cadence} day${u.cadence !== 1 ? 's' : ''}` : ''}</div>
       </div>
     </div>`;
   }).join('');
+  }
+
+  // On hold section
+  const onHoldStudents = students.filter(s => s.activity == 6);
+  document.getElementById('onhold-count-label').textContent = `(${onHoldStudents.length})`;
+  const onHoldList = document.getElementById('onhold-list');
+  if (!onHoldStudents.length) {
+    onHoldList.innerHTML = '<div style="padding:12px;font-size:13px;color:var(--text3);">No students currently on hold.</div>';
+  } else {
+    onHoldList.innerHTML = onHoldStudents.map(s => {
+      const checkBackLabel = s.checkBack
+        ? `<span style="color:var(--accent);font-size:11px;">📅 Check back: ${fmtDate(s.checkBack)}</span>`
+        : `<span style="color:var(--text3);font-size:11px;">No check-back date set</span>`;
+      const podioBtn = s.podio ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener">Open Podio ↗</a>` : '';
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--text3);border-radius:var(--radius);padding:12px 16px;margin-bottom:6px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;">
+        <div>
+          <div style="font-weight:500;font-size:13px;">${escHtml(s.name)}</div>
+          <div style="margin-top:4px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            ${checkBackLabel}
+            <span style="font-size:12px;color:var(--text2);">${escHtml(s.update || 'No update entered')}</span>
+            ${podioBtn}
+          </div>
+        </div>
+        <button class="btn-edit" onclick="openEditModal('${s.id}')">Edit</button>
+      </div>`;
+    }).join('');
+  }
 }
 
 function updateOutreachBadge() {
