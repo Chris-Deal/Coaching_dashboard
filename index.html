@@ -1145,6 +1145,36 @@ function renderOutreach() {
     wrap.innerHTML = '<div class="outreach-empty">🎉 You\'re all caught up! No outreach needed today.</div>';
   } else {
     wrap.innerHTML = toContact.map(s => {
+      const u = s.urgency;
+      const lvl = u.level;
+      let daysLabel = u.resurfaced ? '⏸ Check-back date reached!'
+        : lvl === 'urgent' ? `${u.overdueDays} day${u.overdueDays !== 1 ? 's' : ''} overdue`
+        : lvl === 'due' ? 'Due today'
+        : `Due in ${Math.abs(u.overdueDays)} day${Math.abs(u.overdueDays) !== 1 ? 's' : ''}`;
+      const nextScheduled = s.scheduledAppt
+        ? `<span style="color:var(--green);font-weight:500;">Appt: ${fmtDate(s.scheduledAppt)}</span>`
+        : s.nextOutreach ? `Next attempt: ${fmtDate(s.nextOutreach)}` : 'No call scheduled';
+      const podioBtn = s.podio ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener">Open Podio ↗</a>` : '';
+      return `<div class="outreach-card ${lvl}">
+        <div>
+          <div class="oc-name">${escHtml(s.name)}</div>
+          <div class="oc-meta">
+            <span class="badge b${s.activity}">${activityLabel(s.activity)}</span>
+            <span style="font-size:12px;color:var(--text2);">${escHtml(s.update || 'No update entered')}</span>
+            <span style="font-size:11px;color:var(--text3);">${nextScheduled}</span>
+            ${podioBtn}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div class="oc-days ${lvl}">${daysLabel}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">${u.cadence ? `Every ${u.cadence} day${u.cadence !== 1 ? 's' : ''}` : ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // On hold section
+  const onHoldStudents = students.filter(s => s.activity == 6);
   document.getElementById('onhold-count-label').textContent = `(${onHoldStudents.length})`;
   const onHoldList = document.getElementById('onhold-list');
   if (!onHoldStudents.length) {
@@ -1178,61 +1208,7 @@ function toggleOnHold() {
   icon.textContent = isHidden ? '▼ Hide' : '▶ Show';
 }
 
-  // student outreach cards
-    const u = s.urgency;
-    const lvl = u.level;
-    let daysLabel = s.urgency.resurfaced ? '⏸ Check-back date reached!'
-      : lvl === 'urgent' ? `${u.overdueDays} day${u.overdueDays !== 1 ? 's' : ''} overdue`
-      : lvl === 'due' ? 'Due today'
-      : `Due in ${Math.abs(u.overdueDays)} day${Math.abs(u.overdueDays) !== 1 ? 's' : ''}`;
-    const nextScheduled = s.scheduledAppt
-      ? `<span style="color:var(--green);font-weight:500;">Appt: ${fmtDate(s.scheduledAppt)}</span>`
-      : s.nextOutreach ? `Next attempt: ${fmtDate(s.nextOutreach)}` : 'No call scheduled';
-    const podioBtn = s.podio ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener">Open Podio ↗</a>` : '';
-    return `<div class="outreach-card ${lvl}">
-      <div>
-        <div class="oc-name">${escHtml(s.name)}</div>
-        <div class="oc-meta">
-          <span class="badge b${s.activity}">${activityLabel(s.activity)}</span>
-          <span style="font-size:12px;color:var(--text2);">${escHtml(s.update || 'No update entered')}</span>
-          <span style="font-size:11px;color:var(--text3);">${nextScheduled}</span>
-          ${podioBtn}
-        </div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;">
-        <div class="oc-days ${lvl}">${daysLabel}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px;">${u.cadence ? `Every ${u.cadence} day${u.cadence !== 1 ? 's' : ''}` : ''}</div>
-      </div>
-    </div>`;
-  }).join('');
-  }
 
-  // On hold section
-  const onHoldStudents = students.filter(s => s.activity == 6);
-  document.getElementById('onhold-count-label').textContent = `(${onHoldStudents.length})`;
-  const onHoldList = document.getElementById('onhold-list');
-  if (!onHoldStudents.length) {
-    onHoldList.innerHTML = '<div style="padding:12px;font-size:13px;color:var(--text3);">No students currently on hold.</div>';
-  } else {
-    onHoldList.innerHTML = onHoldStudents.map(s => {
-      const checkBackLabel = s.checkBack
-        ? `<span style="color:var(--accent);font-size:11px;">📅 Check back: ${fmtDate(s.checkBack)}</span>`
-        : `<span style="color:var(--text3);font-size:11px;">No check-back date set</span>`;
-      const podioBtn = s.podio ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener">Open Podio ↗</a>` : '';
-      return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--text3);border-radius:var(--radius);padding:12px 16px;margin-bottom:6px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;">
-        <div>
-          <div style="font-weight:500;font-size:13px;">${escHtml(s.name)}</div>
-          <div style="margin-top:4px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-            ${checkBackLabel}
-            <span style="font-size:12px;color:var(--text2);">${escHtml(s.update || 'No update entered')}</span>
-            ${podioBtn}
-          </div>
-        </div>
-        <button class="btn-edit" onclick="openEditModal('${s.id}')">Edit</button>
-      </div>`;
-    }).join('');
-  }
-}
 
 function updateOutreachBadge() {
   const urgentCount = students.filter(s => {
