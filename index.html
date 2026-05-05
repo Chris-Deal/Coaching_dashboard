@@ -257,7 +257,7 @@
         <div class="toolbar-right">
           <button class="btn-sec" onclick="openReport()">Weekly report</button>
           <button class="btn-sec" onclick="document.getElementById('csv-file-input').click()">Import CSV</button>
-          <button class="btn-voice" id="bulk-dictate-btn" onclick="startBulkDictation()" style="padding:7px 14px;border-radius:10px;font-size:13px;"><span class="mic-icon">🎤</span> Bulk update</button>
+          <button class="btn-voice" id="bulk-dictate-btn" onclick="openBulkSelector()" style="padding:7px 14px;border-radius:10px;font-size:13px;"><span class="mic-icon">🎤</span> Bulk update</button>
           <button class="btn-dark" onclick="openAddModal()">+ Add student</button>
         </div>
       </div>
@@ -413,6 +413,41 @@
     <div class="modal-foot">
       <button class="btn-sec" onclick="closeModal('student-modal')">Cancel</button>
       <button class="btn-dark" onclick="saveStudent()">Save student</button>
+    </div>
+  </div>
+</div>
+
+<!-- BULK DICTATE SELECTOR MODAL -->
+<div class="modal-overlay" id="bulk-modal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head">
+      <h2>🎤 Bulk update</h2>
+      <button class="modal-close" onclick="closeModal('bulk-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:1rem;">
+        <strong>Step 1:</strong> Select the students you want to update, in the order you'll speak about them.<br/>
+        <strong>Step 2:</strong> Hit record and say each update, saying <strong>"next student"</strong> between each one.
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);">Select students (in order)</div>
+        <span style="font-size:11px;color:var(--accent);cursor:pointer;" onclick="toggleAllBulk()">Select / deselect all</span>
+      </div>
+      <div id="bulk-student-list" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);"></div>
+      <div id="bulk-recording-area" style="display:none;margin-top:1rem;">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;">Students in order:</div>
+          <div id="bulk-order-preview" style="font-size:12px;color:var(--text);line-height:1.8;"></div>
+        </div>
+        <div style="background:var(--accent-bg);border:1px solid #C5D3F8;border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--accent);">
+          <span id="bulk-record-status">Ready — click Record to begin</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-sec" onclick="closeModal('bulk-modal')">Cancel</button>
+      <button class="btn-sec" id="bulk-record-btn" onclick="startBulkDictation()" style="display:none;">🔴 Record</button>
+      <button class="btn-dark" id="bulk-next-btn" onclick="bulkSelectorNext()">Next →</button>
     </div>
   </div>
 </div>
@@ -975,6 +1010,7 @@ function markOutreachComplete(id) {
 
 // ── BULK DICTATION ────────────────────────────────────────
 let bulkRecognition = null;
+let bulkSelectedStudents = [];
 
 function getApiKey() {
   let key = localStorage.getItem('cd_api_key');
@@ -1004,105 +1040,132 @@ async function callClaude(system, userMsg) {
   return data.content?.[0]?.text?.trim() || '';
 }
 
+function openBulkSelector() {
+  // Populate student checklist
+  const list = document.getElementById('bulk-student-list');
+  list.innerHTML = students.map((s, i) => `
+    <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;">
+      <input type="checkbox" class="bulk-check" data-id="${s.id}" style="width:15px;height:15px;accent-color:var(--accent);" />
+      <span style="font-size:13px;font-weight:500;">${escHtml(s.name)}</span>
+      <span class="badge b${s.activity}" style="margin-left:auto;">${activityLabel(s.activity)}</span>
+    </label>`).join('');
+
+  // Reset UI
+  document.getElementById('bulk-recording-area').style.display = 'none';
+  document.getElementById('bulk-next-btn').style.display = 'block';
+  document.getElementById('bulk-record-btn').style.display = 'none';
+  document.getElementById('bulk-student-list').style.display = 'block';
+  document.getElementById('bulk-record-status').textContent = 'Ready — click Record to begin';
+
+  document.getElementById('bulk-modal').classList.add('open');
+}
+
+function toggleAllBulk() {
+  const boxes = document.querySelectorAll('.bulk-check');
+  const allChecked = [...boxes].every(b => b.checked);
+  boxes.forEach(b => b.checked = !allChecked);
+}
+
+function bulkSelectorNext() {
+  const checked = [...document.querySelectorAll('.bulk-check:checked')];
+  if (!checked.length) { alert('Please select at least one student.'); return; }
+  bulkSelectedStudents = checked.map(cb => students.find(s => s.id === cb.dataset.id)).filter(Boolean);
+
+  // Show order preview
+  document.getElementById('bulk-order-preview').innerHTML =
+    bulkSelectedStudents.map((s, i) => `<span style="color:var(--accent);font-weight:600;">${i+1}.</span> ${escHtml(s.name)}`).join('<br/>');
+
+  document.getElementById('bulk-student-list').style.display = 'none';
+  document.getElementById('bulk-recording-area').style.display = 'block';
+  document.getElementById('bulk-next-btn').style.display = 'none';
+  document.getElementById('bulk-record-btn').style.display = 'block';
+}
+
 function startBulkDictation() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) { alert('Voice dictation requires Chrome.'); return; }
 
-  const btn = document.getElementById('bulk-dictate-btn');
-  const statusBar = document.getElementById('bulk-status');
-  const statusText = document.getElementById('bulk-status-text');
+  const btn = document.getElementById('bulk-record-btn');
+  const statusText = document.getElementById('bulk-record-status');
 
   if (bulkRecognition) { bulkRecognition.stop(); return; }
 
   bulkRecognition = new SpeechRecognition();
   bulkRecognition.lang = 'en-US';
+  bulkRecognition.continuous = true;
   bulkRecognition.interimResults = false;
   bulkRecognition.maxAlternatives = 1;
 
-  btn.classList.add('listening');
-  btn.innerHTML = '<span class="mic-icon">🔴</span> Listening… (click to stop)';
-  statusBar.style.display = 'block';
-  statusText.textContent = 'Listening — rattle off your updates now…';
+  let fullTranscript = '';
+  btn.innerHTML = '⏹ Stop recording';
+  btn.style.background = '#E53E3E';
+  btn.style.color = '#fff';
+  btn.style.border = 'none';
+  statusText.textContent = '🔴 Listening — say your updates, "next student" between each one…';
 
-  bulkRecognition.onresult = async e => {
-    const transcript = e.results[0][0].transcript;
-    btn.innerHTML = '<span class="mic-icon">✨</span> Parsing…';
-    statusText.textContent = 'Claude is parsing your updates…';
+  bulkRecognition.onresult = e => {
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) fullTranscript += ' ' + e.results[i][0].transcript;
+    }
+    statusText.textContent = '🎤 ' + fullTranscript.trim().slice(-80);
+  };
 
-    const studentNames = students.map(s => s.name).join(', ');
-    const today = new Date().toISOString().slice(0,10);
+  bulkRecognition.onend = async () => {
+    bulkRecognition = null;
+    btn.innerHTML = '🔴 Record';
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.style.border = '';
 
-    const system = `You are a coaching assistant parsing a spoken bulk update about real estate coaching students.
-Extract updates for each student mentioned. Match names to this list: ${studentNames}
-For each student extract any of: status update (condense to under 20 words), last contact date, next appointment date, next outreach attempt date, or whether to remove them.
-"today" = ${today}. Calculate relative dates like "next Tuesday" from ${today}.
-Return ONLY valid JSON array, no markdown, no explanation:
-[{"name":"Exact Name From List","update":"condensed status or null","lastContact":"YYYY-MM-DD or null","scheduledAppt":"YYYY-MM-DD or null","nextOutreach":"YYYY-MM-DD or null","remove":false}]
-Only include students explicitly mentioned.`;
+    if (!fullTranscript.trim()) { statusText.textContent = 'Nothing recorded — try again.'; return; }
+
+    statusText.textContent = '✨ Claude is parsing your updates…';
+
+    // Split on "next student"
+    const parts = fullTranscript.trim().split(/next\s+student/i).map(p => p.trim()).filter(p => p.length > 0);
+
+    if (parts.length === 0) { statusText.textContent = '❌ No updates found.'; return; }
+
+    const system = `You are a coaching assistant. Condense the following spoken update about a real estate coaching student into a single crisp line under 20 words. Be specific and factual. No filler words. Return only the condensed line, nothing else.`;
 
     try {
-      const raw = await callClaude(system, transcript);
-      const updates = JSON.parse(raw.replace(/```json|```/g,'').trim());
-
-      let updated = 0, removed = 0;
-      const toRemove = [];
-
-      updates.forEach(u => {
-        const student = students.find(s => s.name.toLowerCase() === u.name.toLowerCase());
-        if (!student) return;
-        if (u.remove) { toRemove.push(student.id); removed++; return; }
-        if (u.update) student.update = u.update;
-        if (u.lastContact) student.lastContact = u.lastContact;
-        if (u.scheduledAppt !== undefined) student.scheduledAppt = u.scheduledAppt;
-        if (u.nextOutreach !== undefined) student.nextOutreach = u.nextOutreach;
-        student.updatedAt = new Date().toISOString();
-        updated++;
-      });
-
-      if (toRemove.length) {
-        const names = toRemove.map(id => students.find(s => s.id === id)?.name).filter(Boolean).join(', ');
-        if (confirm(`Remove ${removed} student${removed>1?'s':''}: ${names}?`)) {
-          students = students.filter(s => !toRemove.includes(s.id));
+      let matched = 0;
+      for (let i = 0; i < parts.length; i++) {
+        const student = bulkSelectedStudents[i];
+        if (!student) break;
+        const condensed = await callClaude(system, parts[i]);
+        if (condensed) {
+          student.update = condensed;
+          student.updatedAt = new Date().toISOString();
+          matched++;
         }
       }
 
       save_data();
       renderTable();
-      if (document.getElementById('tab-outreach').classList.contains('active')) renderOutreach();
-
-      btn.classList.remove('listening');
-      btn.innerHTML = '<span class="mic-icon">🎤</span> Bulk update';
-      statusText.textContent = `✅ Updated ${updated} student${updated!==1?'s':''}${removed?' · Removed '+removed:''}`;
-      setTimeout(() => { statusBar.style.display = 'none'; }, 5000);
+      statusText.textContent = `✅ Updated ${matched} student${matched !== 1 ? 's' : ''}!`;
+      setTimeout(() => { closeModal('bulk-modal'); }, 3000);
 
     } catch(err) {
-      btn.classList.remove('listening');
-      btn.innerHTML = '<span class="mic-icon">🎤</span> Bulk update';
       if (err.message?.includes('401') || err.message?.includes('invalid')) {
         localStorage.removeItem('cd_api_key');
-        statusText.textContent = '❌ Invalid API key — cleared. Try again to re-enter.';
+        statusText.textContent = '❌ Invalid API key — cleared. Close and try again.';
       } else {
         statusText.textContent = '❌ ' + (err.message || 'Something went wrong.');
       }
-      console.error(err);
-      setTimeout(() => { statusBar.style.display = 'none'; }, 5000);
     }
   };
 
-  bulkRecognition.onend = () => {
+  bulkRecognition.onerror = e => {
+    if (e.error === 'no-speech') return;
     bulkRecognition = null;
-    if (btn.innerHTML.includes('Listening')) {
-      btn.classList.remove('listening');
-      btn.innerHTML = '<span class="mic-icon">🎤</span> Bulk update';
-      statusBar.style.display = 'none';
-    }
+    btn.innerHTML = '🔴 Record';
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.style.border = '';
+    statusText.textContent = '❌ Mic error — please try again.';
   };
-  bulkRecognition.onerror = () => {
-    bulkRecognition = null;
-    btn.classList.remove('listening');
-    btn.innerHTML = '<span class="mic-icon">🎤</span> Bulk update';
-    statusBar.style.display = 'none';
-  };
+
   bulkRecognition.start();
 }
 
