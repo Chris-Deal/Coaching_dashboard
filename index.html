@@ -300,7 +300,7 @@
     <div class="tab-content" id="tab-outreach">
       <div class="outreach-header">
         <div>
-          <div style="font-size:13px;font-weight:500;color:var(--text)">Today's outreach</div>
+          <div style="font-size:13px;font-weight:500;color:var(--text)">Today's outreach <span id="outreach-filter-label" style="font-size:11px;font-weight:400;color:var(--accent);margin-left:6px;"></span></div>
           <div style="font-size:12px;color:var(--text3);margin-top:2px;" id="outreach-date-label"></div>
         </div>
         <button class="btn-dark" onclick="downloadIcal()" id="ical-btn" style="display:none">⬇ Download calendar block</button>
@@ -555,6 +555,8 @@ function setStatFilter(filter) {
     if (cardId) document.getElementById(cardId).classList.add('active-filter');
   }
   renderTable();
+  // Also update outreach if that tab is visible
+  if (document.getElementById('tab-outreach').classList.contains('active')) renderOutreach();
 }
 
 function sortBy(field) {
@@ -1124,8 +1126,16 @@ function renderOutreach() {
   document.getElementById('outreach-date-label').textContent =
     today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
+  const filterLabels = { all: '', deal: '· Filtered: In a deal', action: '· Filtered: Taking action', inactive: '· Filtered: Inactive/stalling', onhold: '· Filtered: On hold' };
+  document.getElementById('outreach-filter-label').textContent = filterLabels[statFilter] || '';
+
   const toContact = [];
   students.forEach(s => {
+    // Apply stat filter
+    if (statFilter === 'deal' && s.activity != 1) return;
+    if (statFilter === 'action' && s.activity != 2) return;
+    if (statFilter === 'inactive' && (s.activity < 3 || s.activity > 5)) return;
+    if (statFilter === 'onhold' && s.activity != 6) return;
     const u = outreachUrgency(s);
     if (u) toContact.push({ ...s, urgency: u });
   });
