@@ -109,6 +109,15 @@
   .row-actions { display: flex; gap: 6px; }
   .btn-edit { background: none; border: 1px solid var(--border); border-radius: 7px; padding: 4px 10px; font-family: inherit; font-size: 11px; color: var(--text2); cursor: pointer; }
   .btn-edit:hover { border-color: var(--border2); color: var(--text); }
+  .inline-edit-text { cursor: pointer; border-bottom: 1px dashed var(--border2); padding-bottom: 1px; display: inline-block; }
+  .inline-edit-text:hover { border-bottom-color: var(--accent); color: var(--accent); }
+  .inline-date { border: 1px solid var(--border); border-radius: 6px; padding: 2px 4px; font-family: 'DM Mono', monospace; font-size: 11px; background: transparent; color: var(--text); outline: none; width: 130px; cursor: pointer; }
+  .inline-date:focus { border-color: var(--accent); background: #fff; }
+  .inline-select { border: 1px solid var(--border); border-radius: 6px; padding: 3px 4px; font-family: inherit; font-size: 11px; background: transparent; color: var(--text); outline: none; width: 100%; cursor: pointer; }
+  .inline-select:focus { border-color: var(--accent); }
+  .inline-input { border: 1px solid var(--accent); border-radius: 6px; padding: 3px 7px; font-family: inherit; font-size: 12px; background: #fff; color: var(--text); outline: none; width: 100%; }
+  .btn-complete { background: var(--green-bg); border: 1px solid #9AE6B4; border-radius: 7px; padding: 5px 10px; font-family: inherit; font-size: 11px; color: var(--green); cursor: pointer; font-weight: 500; white-space: nowrap; }
+  .btn-complete:hover { background: #C6F6D5; }
   .btn-del { background: none; border: 1px solid var(--border); border-radius: 7px; padding: 4px 8px; font-family: inherit; font-size: 11px; color: var(--text3); cursor: pointer; }
   .btn-del:hover { border-color: #f5c6c6; color: var(--red); background: var(--red-bg); }
 
@@ -647,23 +656,37 @@ function renderTable() {
       ? `<div style="font-size:11px;color:var(--text3);margin-top:3px;">👤 ${escHtml(s.pairedCoach)}</div>`
       : '';
     const updateText = s.update ? (s.update.length > 45 ? s.update.slice(0, 45) + '…' : s.update) : '—';
-    return `<tr>
+    const actOptions = [1,2,3,4,5,6].map(n =>
+      `<option value="${n}" ${s.activity==n?'selected':''}>${activityLabel(n)}</option>`
+    ).join('');
+    return `<tr data-id="${s.id}">
       <td style="min-width:160px;">
         <div style="font-weight:500;font-size:13px;">${escHtml(s.name)}</div>
         ${podioBtn}
         ${pairedLabel}
       </td>
-      <td style="font-size:12px;">${escHtml(s.podioStatus || '—')}</td>
-      <td><span class="badge ${bClass}">${activityLabel(s.activity)}</span></td>
-      <td style="font-size:12px;color:var(--text2);max-width:180px;" title="${escHtml(s.update || '')}">${escHtml(updateText)}</td>
-      <td class="date-cell">${fmtDate(s.lastContact)}</td>
-      <td class="date-cell">${s.scheduledAppt ? `<span style="color:var(--green);font-weight:500;">${fmtDate(s.scheduledAppt)}</span>` : '—'}</td>
-      <td class="date-cell">${s.nextOutreach ? fmtDate(s.nextOutreach) : '—'}</td>
+      <td style="font-size:12px;">
+        <span class="inline-edit-text" onclick="inlineEdit(this,'podioStatus','${s.id}')" title="Click to edit">${escHtml(s.podioStatus || '—')}</span>
+      </td>
       <td>
-        <div class="row-actions">
-          <button class="btn-edit" onclick="openEditModal('${s.id}')">Edit</button>
-          <button class="btn-del" onclick="deleteStudent('${s.id}')">✕</button>
-        </div>
+        <select class="inline-select" onchange="inlineSelectSave('${s.id}','activity',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-family:inherit;font-size:11px;background:var(--surface);color:var(--text);cursor:pointer;">
+          ${actOptions}
+        </select>
+      </td>
+      <td style="font-size:12px;color:var(--text2);max-width:180px;" title="${escHtml(s.update || '')}">
+        <span class="inline-edit-text" onclick="inlineEdit(this,'update','${s.id}')" title="Click to edit">${escHtml(updateText)}</span>
+      </td>
+      <td class="date-cell">
+        <input type="date" class="inline-date" value="${s.lastContact||''}" onchange="inlineDateSave('${s.id}','lastContact',this.value)" title="Last contact" />
+      </td>
+      <td class="date-cell">
+        <input type="date" class="inline-date" value="${s.scheduledAppt||''}" onchange="inlineDateSave('${s.id}','scheduledAppt',this.value)" title="Next appt" style="${s.scheduledAppt?'color:#1A7A4A;font-weight:500;':''}" />
+      </td>
+      <td class="date-cell">
+        <input type="date" class="inline-date" value="${s.nextOutreach||''}" onchange="inlineDateSave('${s.id}','nextOutreach',this.value)" title="Next attempt" />
+      </td>
+      <td>
+        <button class="btn-del" onclick="deleteStudent('${s.id}')">✕</button>
       </td>
     </tr>`;
   }).join('');
@@ -673,6 +696,38 @@ function renderTable() {
 function escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ── INLINE EDITING ────────────────────────────────────────
+function inlineEdit(span, field, id) {
+  const current = students.find(s => s.id === id)?.[field] || '';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'inline-input';
+  input.value = current;
+  span.replaceWith(input);
+  input.focus();
+  input.select();
+  const save = () => {
+    const student = students.find(s => s.id === id);
+    if (student) { student[field] = input.value.trim(); student.updatedAt = new Date().toISOString(); }
+    save_data();
+    renderTable();
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') renderTable(); });
+}
+
+function inlineDateSave(id, field, value) {
+  const student = students.find(s => s.id === id);
+  if (student) { student[field] = value; student.updatedAt = new Date().toISOString(); save_data(); updateOutreachBadge(); }
+}
+
+function inlineSelectSave(id, field, value) {
+  const student = students.find(s => s.id === id);
+  if (student) { student[field] = parseInt(value); student.updatedAt = new Date().toISOString(); save_data(); updateOutreachBadge(); }
+}
+
+function save_data() { localStorage.setItem(storageKey(), JSON.stringify(students)); }
 
 // ── ADD / EDIT ────────────────────────────────────────────
 function toggleCheckBack() {
@@ -870,21 +925,12 @@ function startDictation(fieldId, btn) {
       btn.classList.remove('listening');
       btn.innerHTML = '<span class="mic-icon">✨</span> Condensing…';
       try {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 100,
-            system: 'You are a coaching assistant. Condense the following spoken update about a real estate coaching student into a single crisp line under 20 words. Be specific and factual. No filler words. Return only the condensed line, nothing else.',
-            messages: [{ role: 'user', content: transcript }]
-          })
-        });
-        const data = await response.json();
-        const condensed = data.content?.[0]?.text?.trim();
+        const condensed = await callClaude(
+          'You are a coaching assistant. Condense the following spoken update about a real estate coaching student into a single crisp line under 20 words. Be specific and factual. No filler words. Return only the condensed line, nothing else.',
+          transcript
+        );
         if (condensed) document.getElementById(fieldId).value = condensed;
       } catch(err) {
-        // If API fails, just keep the raw transcript
         console.error('Condense error:', err);
       }
       btn.innerHTML = '<span class="mic-icon">🎤</span> Dictate';
@@ -910,8 +956,53 @@ function startDictation(fieldId, btn) {
   recognition.start();
 }
 
+function outreachUpdateField(id, field, value) {
+  const student = students.find(s => s.id === id);
+  if (student) { student[field] = value; student.updatedAt = new Date().toISOString(); save_data(); updateOutreachBadge(); }
+}
+
+function markOutreachComplete(id) {
+  const today = new Date().toISOString().slice(0,10);
+  const student = students.find(s => s.id === id);
+  if (!student) return;
+  student.lastContact = today;
+  student.nextOutreach = '';
+  student.updatedAt = new Date().toISOString();
+  save_data();
+  renderOutreach();
+  renderTable();
+}
+
 // ── BULK DICTATION ────────────────────────────────────────
 let bulkRecognition = null;
+
+function getApiKey() {
+  let key = localStorage.getItem('cd_api_key');
+  if (!key) {
+    key = prompt('Enter your Anthropic API key (sk-ant-...):\n\nThis is stored locally in your browser only and never shared.');
+    if (!key) return null;
+    localStorage.setItem('cd_api_key', key.trim());
+  }
+  return key;
+}
+
+async function callClaude(system, userMsg) {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error('No API key provided');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, system, messages: [{ role: 'user', content: userMsg }] })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content?.[0]?.text?.trim() || '';
+}
 
 function startBulkDictation() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -921,10 +1012,7 @@ function startBulkDictation() {
   const statusBar = document.getElementById('bulk-status');
   const statusText = document.getElementById('bulk-status-text');
 
-  if (bulkRecognition) {
-    bulkRecognition.stop();
-    return;
-  }
+  if (bulkRecognition) { bulkRecognition.stop(); return; }
 
   bulkRecognition = new SpeechRecognition();
   bulkRecognition.lang = 'en-US';
@@ -933,68 +1021,71 @@ function startBulkDictation() {
 
   btn.classList.add('listening');
   btn.innerHTML = '<span class="mic-icon">🔴</span> Listening… (click to stop)';
-  statusBar.style.display = 'flex';
-  statusText.textContent = 'Listening — rattle off your student updates now…';
+  statusBar.style.display = 'block';
+  statusText.textContent = 'Listening — rattle off your updates now…';
 
   bulkRecognition.onresult = async e => {
     const transcript = e.results[0][0].transcript;
-    btn.innerHTML = '<span class="mic-icon">✨</span> Parsing updates…';
-    statusText.textContent = 'Got it — Claude is parsing your updates now…';
+    btn.innerHTML = '<span class="mic-icon">✨</span> Parsing…';
+    statusText.textContent = 'Claude is parsing your updates…';
 
     const studentNames = students.map(s => s.name).join(', ');
+    const today = new Date().toISOString().slice(0,10);
+
+    const system = `You are a coaching assistant parsing a spoken bulk update about real estate coaching students.
+Extract updates for each student mentioned. Match names to this list: ${studentNames}
+For each student extract any of: status update (condense to under 20 words), last contact date, next appointment date, next outreach attempt date, or whether to remove them.
+"today" = ${today}. Calculate relative dates like "next Tuesday" from ${today}.
+Return ONLY valid JSON array, no markdown, no explanation:
+[{"name":"Exact Name From List","update":"condensed status or null","lastContact":"YYYY-MM-DD or null","scheduledAppt":"YYYY-MM-DD or null","nextOutreach":"YYYY-MM-DD or null","remove":false}]
+Only include students explicitly mentioned.`;
 
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: `You are a coaching assistant. The user will speak a bulk update mentioning multiple students by name and giving an update for each. 
-Your job is to:
-1. Match each mentioned student to the closest name in this list: ${studentNames}
-2. Condense each update into a single crisp line under 20 words
-3. Return ONLY a JSON array like this, nothing else:
-[{"name": "Exact Name From List", "update": "Condensed one-line update"}]
-If a student is mentioned but not in the list, skip them. Return only valid JSON, no markdown, no explanation.`,
-          messages: [{ role: 'user', content: transcript }]
-        })
-      });
+      const raw = await callClaude(system, transcript);
+      const updates = JSON.parse(raw.replace(/```json|```/g,'').trim());
 
-      const data = await response.json();
-      const raw = data.content?.[0]?.text?.trim();
+      let updated = 0, removed = 0;
+      const toRemove = [];
 
-      let updates;
-      try {
-        updates = JSON.parse(raw.replace(/```json|```/g, '').trim());
-      } catch(e) {
-        throw new Error('Could not parse Claude response: ' + raw);
-      }
-
-      let matched = 0;
       updates.forEach(u => {
         const student = students.find(s => s.name.toLowerCase() === u.name.toLowerCase());
-        if (student && u.update) {
-          student.update = u.update;
-          student.updatedAt = new Date().toISOString();
-          matched++;
-        }
+        if (!student) return;
+        if (u.remove) { toRemove.push(student.id); removed++; return; }
+        if (u.update) student.update = u.update;
+        if (u.lastContact) student.lastContact = u.lastContact;
+        if (u.scheduledAppt !== undefined) student.scheduledAppt = u.scheduledAppt;
+        if (u.nextOutreach !== undefined) student.nextOutreach = u.nextOutreach;
+        student.updatedAt = new Date().toISOString();
+        updated++;
       });
 
-      save();
+      if (toRemove.length) {
+        const names = toRemove.map(id => students.find(s => s.id === id)?.name).filter(Boolean).join(', ');
+        if (confirm(`Remove ${removed} student${removed>1?'s':''}: ${names}?`)) {
+          students = students.filter(s => !toRemove.includes(s.id));
+        }
+      }
+
+      save_data();
       renderTable();
+      if (document.getElementById('tab-outreach').classList.contains('active')) renderOutreach();
 
       btn.classList.remove('listening');
       btn.innerHTML = '<span class="mic-icon">🎤</span> Bulk update';
-      statusText.textContent = `✅ Updated ${matched} student${matched !== 1 ? 's' : ''} successfully!`;
-      setTimeout(() => { statusBar.style.display = 'none'; }, 4000);
+      statusText.textContent = `✅ Updated ${updated} student${updated!==1?'s':''}${removed?' · Removed '+removed:''}`;
+      setTimeout(() => { statusBar.style.display = 'none'; }, 5000);
 
     } catch(err) {
       btn.classList.remove('listening');
       btn.innerHTML = '<span class="mic-icon">🎤</span> Bulk update';
-      statusText.textContent = '❌ Something went wrong — please try again.';
+      if (err.message?.includes('401') || err.message?.includes('invalid')) {
+        localStorage.removeItem('cd_api_key');
+        statusText.textContent = '❌ Invalid API key — cleared. Try again to re-enter.';
+      } else {
+        statusText.textContent = '❌ ' + (err.message || 'Something went wrong.');
+      }
       console.error(err);
-      setTimeout(() => { statusBar.style.display = 'none'; }, 4000);
+      setTimeout(() => { statusBar.style.display = 'none'; }, 5000);
     }
   };
 
@@ -1006,16 +1097,16 @@ If a student is mentioned but not in the list, skip them. Return only valid JSON
       statusBar.style.display = 'none';
     }
   };
-
   bulkRecognition.onerror = () => {
     bulkRecognition = null;
     btn.classList.remove('listening');
     btn.innerHTML = '<span class="mic-icon">🎤</span> Bulk update';
     statusBar.style.display = 'none';
   };
-
   bulkRecognition.start();
 }
+
+
 
 // ── CSV IMPORT ────────────────────────────────────────────
 let csvParsedRows = [];
@@ -1183,18 +1274,29 @@ function renderOutreach() {
         : s.nextOutreach ? `Next attempt: ${fmtDate(s.nextOutreach)}` : 'No call scheduled';
       const podioBtn = s.podio ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener">Open Podio ↗</a>` : '';
       return `<div class="outreach-card ${lvl}">
-        <div>
+        <div style="flex:1;">
           <div class="oc-name">${escHtml(s.name)}</div>
           <div class="oc-meta">
             <span class="badge b${s.activity}">${activityLabel(s.activity)}</span>
             <span style="font-size:12px;color:var(--text2);">${escHtml(s.update || 'No update entered')}</span>
-            <span style="font-size:11px;color:var(--text3);">${nextScheduled}</span>
             ${podioBtn}
           </div>
+          <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;align-items:center;">
+            <label style="font-size:11px;color:var(--text3);">Last contact:
+              <input type="date" value="${s.lastContact||''}" onchange="outreachUpdateField('${s.id}','lastContact',this.value)" class="inline-date" style="margin-left:4px;" />
+            </label>
+            <label style="font-size:11px;color:var(--text3);">Next appt:
+              <input type="date" value="${s.scheduledAppt||''}" onchange="outreachUpdateField('${s.id}','scheduledAppt',this.value)" class="inline-date" style="margin-left:4px;${s.scheduledAppt?'color:#1A7A4A;font-weight:500;':''}" />
+            </label>
+            <label style="font-size:11px;color:var(--text3);">Next attempt:
+              <input type="date" value="${s.nextOutreach||''}" onchange="outreachUpdateField('${s.id}','nextOutreach',this.value)" class="inline-date" style="margin-left:4px;" />
+            </label>
+          </div>
         </div>
-        <div style="text-align:right;flex-shrink:0;">
+        <div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
           <div class="oc-days ${lvl}">${daysLabel}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px;">${u.cadence ? `Every ${u.cadence} day${u.cadence !== 1 ? 's' : ''}` : ''}</div>
+          <div style="font-size:11px;color:var(--text3);">${u.cadence ? `Every ${u.cadence} day${u.cadence !== 1 ? 's' : ''}` : ''}</div>
+          <button class="btn-complete" onclick="markOutreachComplete('${s.id}')">✓ Mark complete</button>
         </div>
       </div>`;
     }).join('');
