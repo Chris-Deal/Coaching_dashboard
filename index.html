@@ -256,7 +256,7 @@
         <div class="toolbar-left">Student roster</div>
         <div class="toolbar-right">
           <button class="btn-sec" onclick="openReport()">Weekly report</button>
-          <button class="btn-sec" onclick="document.getElementById('csv-file-input').click()">Import CSV</button>
+          <button class="btn-sec" onclick="openImportModal()">Import CSV</button>
           <button class="btn-voice" id="bulk-dictate-btn" onclick="openBulkSelector()" style="padding:7px 14px;border-radius:10px;font-size:13px;"><span class="mic-icon">🎤</span> Bulk update</button>
           <button class="btn-dark" onclick="openAddModal()">+ Add student</button>
         </div>
@@ -379,6 +379,30 @@
   </div><!-- end main -->
 </div>
 
+<!-- NOTES HISTORY MODAL -->
+<div class="modal-overlay" id="history-modal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-head">
+      <h2>📋 Notes history — <span id="history-student-name"></span></h2>
+      <button class="modal-close" onclick="closeModal('history-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:1rem;">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;">Add a note</div>
+        <div style="display:flex;gap:8px;align-items:flex-start;">
+          <input type="text" id="history-new-note" placeholder="Type a note or update…" style="flex:1;border:1px solid var(--border);border-radius:var(--radius);padding:8px 11px;font-family:inherit;font-size:13px;background:var(--bg);color:var(--text);outline:none;" />
+          <button class="btn-dark" onclick="addHistoryNote()" style="padding:8px 14px;white-space:nowrap;">Add note</button>
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px;">History</div>
+      <div id="history-list" style="max-height:380px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-sec" onclick="closeModal('history-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADD/EDIT MODAL -->
 <div class="modal-overlay" id="student-modal">
   <div class="modal">
@@ -443,6 +467,30 @@
     <div class="modal-foot">
       <button class="btn-sec" onclick="closeModal('student-modal')">Cancel</button>
       <button class="btn-dark" onclick="saveStudent()">Save student</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay" id="import-modal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-head">
+      <h2>Import students from CSV</h2>
+      <button class="modal-close" onclick="closeModal('import-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:1.25rem;">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">📄 CSV template</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:10px;">Your CSV must use these exact column headers. Download the template to get started:</div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text2);line-height:1.8;margin-bottom:10px;">name, podio_link, podio_status,<br/>activity_level, status_update,<br/>last_contact, scheduled_appt,<br/>paired_coach</div>
+        <button class="btn-sec" onclick="downloadTemplate()" style="font-size:12px;padding:6px 14px;">⬇ Download template</button>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">Activity levels: <strong>1</strong> = In deal &nbsp;·&nbsp; <strong>2</strong> = Taking action &nbsp;·&nbsp; <strong>3</strong> = Stalling &nbsp;·&nbsp; <strong>4</strong> = Recently inactive &nbsp;·&nbsp; <strong>5</strong> = Long-term inactive &nbsp;·&nbsp; <strong>6</strong> = On hold</div>
+      <div style="font-size:12px;color:var(--text2);">Dates should be in <strong>YYYY-MM-DD</strong> or <strong>M/D/YY</strong> format. Leave fields blank if unknown — you can fill them in by editing each student afterward.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-sec" onclick="closeModal('import-modal')">Cancel</button>
+      <button class="btn-dark" onclick="closeModal('import-modal');document.getElementById('csv-file-input').click();">Choose file & import</button>
     </div>
   </div>
 </div>
@@ -748,6 +796,7 @@ function renderTable() {
       </td>
       <td style="font-size:12px;color:var(--text2);max-width:180px;" title="${escHtml(s.update || '')}">
         <span class="inline-edit-text" onclick="inlineEdit(this,'update','${s.id}')" title="Click to edit">${escHtml(updateText)}</span>
+        <button onclick="openHistory('${s.id}')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3);padding:0 0 0 4px;" title="View history">📋${s.notes&&s.notes.length?` ${s.notes.length}`:''}</button>
       </td>
       <td class="date-cell">
         <input type="date" class="inline-date" value="${s.lastContact||''}" onchange="inlineDateSave('${s.id}','lastContact',this.value)" title="Last contact" />
@@ -796,6 +845,79 @@ function escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── NOTES HISTORY ─────────────────────────────────────────
+let historyStudentId = null;
+
+function openHistory(id) {
+  historyStudentId = id;
+  const student = students.find(s => s.id === id);
+  if (!student) return;
+  document.getElementById('history-student-name').textContent = student.name;
+  document.getElementById('history-new-note').value = '';
+  renderHistoryList(student);
+  document.getElementById('history-modal').classList.add('open');
+}
+
+function renderHistoryList(student) {
+  const notes = student.notes || [];
+  const list = document.getElementById('history-list');
+  if (!notes.length && !student.update) {
+    list.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:1rem 0;">No history yet. Updates will be logged here automatically.</div>';
+    return;
+  }
+  // Show current update at top if exists
+  let html = student.update ? `
+    <div style="padding:10px 12px;background:var(--accent-bg);border:1px solid #C5D3F8;border-radius:var(--radius);margin-bottom:6px;">
+      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:3px;">Current status</div>
+      <div style="font-size:13px;color:var(--text);">${escHtml(student.update)}</div>
+    </div>` : '';
+  // Show history entries newest first
+  const sorted = [...notes].reverse();
+  sorted.forEach((n, i) => {
+    html += `<div style="padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:5px;display:flex;justify-content:space-between;align-items:start;gap:10px;">
+      <div style="flex:1;">
+        <div style="font-size:13px;color:var(--text);">${escHtml(n.text)}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px;">${fmtDate(n.date)} · ${n.date}</div>
+      </div>
+      <button onclick="deleteHistoryNote('${notes.length - 1 - i}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0;flex-shrink:0;" title="Delete">✕</button>
+    </div>`;
+  });
+  list.innerHTML = html;
+}
+
+function addHistoryNote() {
+  const input = document.getElementById('history-new-note');
+  const text = input.value.trim();
+  if (!text) return;
+  const student = students.find(s => s.id === historyStudentId);
+  if (!student) return;
+  if (!student.notes) student.notes = [];
+  student.notes.push({ text, date: new Date().toISOString().slice(0,10) });
+  student.updatedAt = new Date().toISOString();
+  save_data();
+  renderTable();
+  input.value = '';
+  renderHistoryList(student);
+}
+
+function deleteHistoryNote(indexStr) {
+  const student = students.find(s => s.id === historyStudentId);
+  if (!student || !student.notes) return;
+  student.notes.splice(parseInt(indexStr), 1);
+  save_data();
+  renderTable();
+  renderHistoryList(student);
+}
+
+function archiveCurrentUpdate(student) {
+  if (!student.update) return;
+  if (!student.notes) student.notes = [];
+  // Don't archive if identical to last entry
+  const last = student.notes[student.notes.length - 1];
+  if (last && last.text === student.update) return;
+  student.notes.push({ text: student.update, date: new Date().toISOString().slice(0,10) });
+}
+
 // ── INLINE EDITING ────────────────────────────────────────
 function inlineEdit(span, field, id) {
   const current = students.find(s => s.id === id)?.[field] || '';
@@ -808,7 +930,11 @@ function inlineEdit(span, field, id) {
   input.select();
   const save = () => {
     const student = students.find(s => s.id === id);
-    if (student) { student[field] = input.value.trim(); student.updatedAt = new Date().toISOString(); }
+    if (student) {
+      if (field === 'update') archiveCurrentUpdate(student);
+      student[field] = input.value.trim();
+      student.updatedAt = new Date().toISOString();
+    }
     save_data();
     renderTable();
   };
@@ -890,7 +1016,11 @@ function saveStudent() {
   };
   if (editId) {
     const idx = students.findIndex(x => x.id === editId);
-    if (idx > -1) students[idx] = data;
+    if (idx > -1) {
+      if (students[idx].update !== data.update) archiveCurrentUpdate(students[idx]);
+      data.notes = students[idx].notes || [];
+      students[idx] = data;
+    }
   } else {
     students.push(data);
   }
@@ -1206,6 +1336,7 @@ function startBulkDictation() {
         if (!student) break;
         const condensed = await callClaude(system, parts[i]);
         if (condensed) {
+          archiveCurrentUpdate(student);
           student.update = condensed;
           student.updatedAt = new Date().toISOString();
           matched++;
@@ -1241,6 +1372,29 @@ function startBulkDictation() {
 }
 
 
+
+function openImportModal() {
+  document.getElementById('import-modal').classList.add('open');
+}
+
+function downloadTemplate() {
+  const csv = [
+    'name,podio_link,podio_status,activity_level,status_update,last_contact,scheduled_appt,paired_coach',
+    'Maria Santos,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00001,Active,1,Midway through flip in renovation phase on track for close,2026-04-28,2026-05-07,N/A',
+    'James Okafor,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00002,Active,2,Making offers on properties no contract yet but highly motivated,2026-04-29,,N/A',
+    'Tina Reeves,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00003,Active,3,Missed last two calls says she is busy but engagement is dropping,2026-04-24,,Coach B',
+    'Devon Harris,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00004,Inactive,4,Has not responded in two weeks follow up attempt scheduled,2026-04-15,,N/A',
+    'Chris Walker,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00005,Inactive,5,No contact in over six weeks likely disengaged,2026-03-18,,N/A',
+    'Alex Thompson,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00006,Active,6,Waiting on financing approval before next steps,2026-04-01,2026-05-15,N/A'
+  ].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'student_import_template.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 // ── CSV IMPORT ────────────────────────────────────────────
 let csvParsedRows = [];
