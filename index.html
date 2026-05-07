@@ -303,6 +303,16 @@
         </tbody>
       </table>
     </div>
+
+    <!-- On Hold Section (Roster) -->
+    <div style="margin-top:1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);" onclick="toggleRosterOnHold()">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);">⏸ On hold students <span id="roster-onhold-count-label" style="color:var(--text3);font-weight:400;"></span></div>
+        <div id="roster-onhold-toggle-icon" style="font-size:12px;color:var(--text3);">▶ Show</div>
+      </div>
+      <div id="roster-onhold-list" style="display:none;margin-top:4px;"></div>
+    </div>
+
     </div><!-- end tab-roster -->
 
     <!-- OUTREACH TAB -->
@@ -726,6 +736,35 @@ function renderTable() {
     </tr>`;
   }).join('');
   updateOutreachBadge();
+
+  // Render on-hold section on roster
+  const onHoldStudents = students.filter(s => s.activity == 6);
+  document.getElementById('roster-onhold-count-label').textContent = `(${onHoldStudents.length})`;
+  const rosterOnHoldList = document.getElementById('roster-onhold-list');
+  if (!onHoldStudents.length) {
+    rosterOnHoldList.innerHTML = '<div style="padding:12px;font-size:13px;color:var(--text3);">No students currently on hold.</div>';
+  } else {
+    rosterOnHoldList.innerHTML = `<div class="table-wrap" style="margin-top:0;border-radius:0 0 var(--radius-lg) var(--radius-lg);">
+      <table style="min-width:600px;">
+        <tbody>${onHoldStudents.map(s => {
+          const checkBackLabel = s.checkBack ? fmtDate(s.checkBack) : '—';
+          const podioBtn = s.podio ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener">Open Podio ↗</a>` : '';
+          const apptOrOutreach = s.scheduledAppt ? `<span style="color:var(--green);font-size:11px;">Appt: ${fmtDate(s.scheduledAppt)}</span>`
+            : s.nextOutreach ? `<span style="font-size:11px;color:var(--text3);">Attempt: ${fmtDate(s.nextOutreach)}</span>` : '—';
+          return `<tr>
+            <td style="min-width:160px;"><div style="font-weight:500;">${escHtml(s.name)}</div>${podioBtn}</td>
+            <td style="font-size:12px;color:var(--text2);">${escHtml(s.update || '—')}</td>
+            <td style="font-size:12px;">${apptOrOutreach}</td>
+            <td class="date-cell" style="font-size:11px;">Check back: ${checkBackLabel}</td>
+            <td><div class="row-actions">
+              <button class="btn-edit" onclick="openEditModal('${s.id}')">Edit</button>
+              <button class="btn-del" onclick="deleteStudent('${s.id}')">✕</button>
+            </div></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>`;
+  }
 }
 
 function escHtml(str) {
@@ -767,7 +806,17 @@ function save_data() { localStorage.setItem(storageKey(), JSON.stringify(student
 // ── ADD / EDIT ────────────────────────────────────────────
 function toggleCheckBack() {
   const val = document.getElementById('f-activity').value;
-  document.getElementById('checkback-field').style.display = val == 6 ? 'flex' : 'none';
+  const field = document.getElementById('checkback-field');
+  field.style.display = val == 6 ? 'flex' : 'none';
+  if (val == 6) {
+    // Auto-populate from next scheduled appt or next outreach
+    const appt = document.getElementById('f-scheduled-appt').value;
+    const outreach = document.getElementById('f-next-outreach').value;
+    const checkback = document.getElementById('f-checkback');
+    if (!checkback.value) {
+      checkback.value = appt || outreach || '';
+    }
+  }
 }
 
 function openAddModal() {
@@ -1275,13 +1324,24 @@ function daysSince(dateStr) {
 }
 
 function outreachUrgency(student) {
-  // On hold — only resurface if check-back date has passed
   if (student.activity == 6) {
-    if (!student.checkBack) return null;
-    const checkBack = new Date(student.checkBack + 'T00:00:00');
     const today = new Date(); today.setHours(0,0,0,0);
-    if (checkBack > today) return null;
-    return { level: 'urgent', days: 0, overdueDays: 1, cadence: 0, resurfaced: true };
+    // Show in outreach if they have a future scheduled appt or next outreach date
+    const apptDate = student.scheduledAppt ? new Date(student.scheduledAppt + 'T00:00:00') : null;
+    const outreachDate = student.nextOutreach ? new Date(student.nextOutreach + 'T00:00:00') : null;
+    const relevantDate = apptDate || outreachDate;
+    if (relevantDate) {
+      const diff = Math.floor((today - relevantDate) / (1000 * 60 * 60 * 24));
+      if (diff > 0) return { level: 'urgent', days: diff, overdueDays: diff, cadence: 0, onHold: true };
+      if (diff === 0) return { level: 'due', days: 0, overdueDays: 0, cadence: 0, onHold: true };
+      if (diff >= -2) return { level: 'soon', days: diff, overdueDays: diff, cadence: 0, onHold: true };
+    }
+    // Check-back date resurfacing
+    if (student.checkBack) {
+      const checkBack = new Date(student.checkBack + 'T00:00:00');
+      if (checkBack <= today) return { level: 'urgent', days: 0, overdueDays: 1, cadence: 0, resurfaced: true };
+    }
+    return null;
   }
   const cadence = CADENCE[student.activity] || 7;
   const days = daysSince(student.lastContact);
@@ -1329,6 +1389,9 @@ function renderOutreach() {
       const u = s.urgency;
       const lvl = u.level;
       let daysLabel = u.resurfaced ? '⏸ Check-back date reached!'
+        : u.onHold && u.level === 'urgent' ? `⏸ On hold — appt/attempt ${u.overdueDays} day${u.overdueDays!==1?'s':''} overdue`
+        : u.onHold && u.level === 'due' ? '⏸ On hold — appt/attempt due today'
+        : u.onHold && u.level === 'soon' ? `⏸ On hold — appt/attempt in ${Math.abs(u.overdueDays)} day${Math.abs(u.overdueDays)!==1?'s':''}`
         : lvl === 'urgent' ? `${u.overdueDays} day${u.overdueDays !== 1 ? 's' : ''} overdue`
         : lvl === 'due' ? 'Due today'
         : `Due in ${Math.abs(u.overdueDays)} day${Math.abs(u.overdueDays) !== 1 ? 's' : ''}`;
@@ -1390,6 +1453,14 @@ function renderOutreach() {
       </div>`;
     }).join('');
   }
+}
+
+function toggleRosterOnHold() {
+  const list = document.getElementById('roster-onhold-list');
+  const icon = document.getElementById('roster-onhold-toggle-icon');
+  const isHidden = list.style.display === 'none';
+  list.style.display = isHidden ? 'block' : 'none';
+  icon.textContent = isHidden ? '▼ Hide' : '▶ Show';
 }
 
 function toggleOnHold() {
