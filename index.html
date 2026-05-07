@@ -1219,6 +1219,7 @@ function markOutreachComplete(id) {
 // ── BULK DICTATION ────────────────────────────────────────
 let bulkRecognition = null;
 let bulkSelectedStudents = [];
+let bulkPendingUpdates = [];
 
 function getApiKey() {
   let key = localStorage.getItem('cd_api_key');
@@ -1319,8 +1320,6 @@ function startBulkDictation() {
     }
     statusText.textContent = '🎤 ' + fullTranscript.trim().slice(-80);
   };
-
-  let bulkPendingUpdates = [];
 
   bulkRecognition.onend = async () => {
     bulkRecognition = null;
