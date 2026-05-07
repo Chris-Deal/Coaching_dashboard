@@ -294,7 +294,6 @@
             <th style="min-width:180px;" onclick="sortBy('update')">Status update</th>
             <th style="min-width:110px;" onclick="sortBy('lastContact')">Last contact</th>
             <th style="min-width:110px;" onclick="sortBy('scheduledAppt')">Next appt</th>
-            <th style="min-width:110px;" onclick="sortBy('nextOutreach')">Next attempt</th>
             <th style="width:70px;"></th>
           </tr>
         </thead>
@@ -317,39 +316,64 @@
 
     <!-- OUTREACH TAB -->
     <div class="tab-content" id="tab-outreach">
-      <div class="outreach-header">
-        <div>
-          <div style="font-size:13px;font-weight:500;color:var(--text)">Today's outreach <span id="outreach-filter-label" style="font-size:11px;font-weight:400;color:var(--accent);margin-left:6px;"></span></div>
-          <div style="font-size:12px;color:var(--text3);margin-top:2px;" id="outreach-date-label"></div>
+
+      <!-- Sub-tabs -->
+      <div style="display:flex;gap:2px;margin-bottom:1.25rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:3px;width:fit-content;">
+        <button class="tab active" id="subtab-btn-outreach" onclick="switchSubTab('outreach')" style="font-size:12px;padding:5px 14px;">📞 Outreach due</button>
+        <button class="tab" id="subtab-btn-appts" onclick="switchSubTab('appts')" style="font-size:12px;padding:5px 14px;">📅 Scheduled appts <span id="appts-count-badge" style="display:none;background:#534AB7;color:#fff;border-radius:10px;font-size:10px;font-weight:600;padding:1px 6px;margin-left:4px;">0</span></button>
+      </div>
+
+      <!-- OUTREACH DUE SUB-TAB -->
+      <div id="subtab-outreach">
+        <div class="outreach-header">
+          <div>
+            <div style="font-size:13px;font-weight:500;color:var(--text)">Today's outreach <span id="outreach-filter-label" style="font-size:11px;font-weight:400;color:var(--accent);margin-left:6px;"></span></div>
+            <div style="font-size:12px;color:var(--text3);margin-top:2px;" id="outreach-date-label"></div>
+          </div>
+          <button class="btn-dark" onclick="previewIcal()" id="ical-btn" style="display:none">⬇ Download calendar block</button>
         </div>
-        <button class="btn-dark" onclick="previewIcal()" id="ical-btn" style="display:none">⬇ Download calendar block</button>
-      </div>
 
-      <div class="legend">
-        <div class="legend-item"><div class="legend-dot" style="background:#E53E3E"></div> Overdue — reach out now</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#D69E2E"></div> Due today</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#38A169"></div> Coming up soon</div>
-      </div>
-
-      <div class="cadence-info">
-        <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-right:4px;">Cadence rules:</span>
-        <span class="cadence-item"><strong>In deal</strong> · every 1–2 days</span>
-        <span class="cadence-item"><strong>Taking action</strong> · weekly</span>
-        <span class="cadence-item"><strong>Stalling</strong> · every 3 days</span>
-        <span class="cadence-item"><strong>Recently inactive</strong> · every 2 weeks</span>
-        <span class="cadence-item"><strong>Long-term inactive</strong> · monthly</span>
-      </div>
-
-      <div id="outreach-list-wrap"></div>
-
-      <!-- On Hold Section -->
-      <div style="margin-top:1.5rem;">
-        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);" onclick="toggleOnHold()">
-          <div style="font-size:12px;font-weight:600;color:var(--text2);">⏸ On hold students <span id="onhold-count-label" style="color:var(--text3);font-weight:400;"></span></div>
-          <div id="onhold-toggle-icon" style="font-size:12px;color:var(--text3);">▶ Show</div>
+        <div class="legend" style="cursor:pointer;">
+          <div class="legend-item" id="urgency-filter-urgent" onclick="setUrgencyFilter('urgent')" style="cursor:pointer;padding:4px 10px;border-radius:20px;border:1px solid transparent;transition:all 0.15s;"><div class="legend-dot" style="background:#E53E3E"></div> Overdue — reach out now</div>
+          <div class="legend-item" id="urgency-filter-due" onclick="setUrgencyFilter('due')" style="cursor:pointer;padding:4px 10px;border-radius:20px;border:1px solid transparent;transition:all 0.15s;"><div class="legend-dot" style="background:#D69E2E"></div> Due today</div>
+          <div class="legend-item" id="urgency-filter-soon" onclick="setUrgencyFilter('soon')" style="cursor:pointer;padding:4px 10px;border-radius:20px;border:1px solid transparent;transition:all 0.15s;"><div class="legend-dot" style="background:#38A169"></div> Coming up soon</div>
+          <div style="font-size:11px;color:var(--text3);margin-left:6px;align-self:center;cursor:pointer;" id="urgency-clear-btn"></div>
         </div>
-        <div id="onhold-list" style="display:none;margin-top:4px;"></div>
+
+        <div class="cadence-info" style="flex-wrap:wrap;gap:8px;">
+          <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-right:4px;">Cadence rules:</span>
+          <span class="cadence-item"><strong>In deal</strong> · every <input type="number" id="cadence-1" min="1" max="30" value="2" onchange="saveCadence()" style="width:36px;padding:1px 4px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:11px;text-align:center;" /> days</span>
+          <span class="cadence-item"><strong>Taking action</strong> · every <input type="number" id="cadence-2" min="1" max="60" value="7" onchange="saveCadence()" style="width:36px;padding:1px 4px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:11px;text-align:center;" /> days</span>
+          <span class="cadence-item"><strong>Stalling</strong> · every <input type="number" id="cadence-3" min="1" max="30" value="3" onchange="saveCadence()" style="width:36px;padding:1px 4px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:11px;text-align:center;" /> days</span>
+          <span class="cadence-item"><strong>Recently inactive</strong> · every <input type="number" id="cadence-4" min="1" max="60" value="14" onchange="saveCadence()" style="width:36px;padding:1px 4px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:11px;text-align:center;" /> days</span>
+          <span class="cadence-item"><strong>Long-term inactive</strong> · every <input type="number" id="cadence-5" min="1" max="90" value="30" onchange="saveCadence()" style="width:36px;padding:1px 4px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:11px;text-align:center;" /> days</span>
+        </div>
+
+        <div id="outreach-list-wrap"></div>
+
+        <!-- On Hold Section -->
+        <div style="margin-top:1.5rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);" onclick="toggleOnHold()">
+            <div style="font-size:12px;font-weight:600;color:var(--text2);">⏸ On hold students <span id="onhold-count-label" style="color:var(--text3);font-weight:400;"></span></div>
+            <div id="onhold-toggle-icon" style="font-size:12px;color:var(--text3);">▶ Show</div>
+          </div>
+          <div id="onhold-list" style="display:none;margin-top:4px;"></div>
+        </div>
       </div>
+
+      <!-- SCHEDULED APPTS SUB-TAB -->
+      <div id="subtab-appts" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+          <div style="font-size:13px;font-weight:500;color:var(--text);">Scheduled appointments</div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn-sec" id="appts-list-btn" onclick="switchApptView('list')" style="font-size:12px;padding:5px 12px;background:var(--text);color:#fff;border:none;">List</button>
+            <button class="btn-sec" id="appts-cal-btn" onclick="switchApptView('calendar')" style="font-size:12px;padding:5px 12px;">Calendar</button>
+          </div>
+        </div>
+        <div id="appts-list-view"></div>
+        <div id="appts-cal-view" style="display:none;"></div>
+      </div>
+
     </div><!-- end tab-outreach -->
 
   </div><!-- end main -->
@@ -413,10 +437,6 @@
         <div class="fg">
           <label>Next scheduled appointment</label>
           <input type="date" id="f-scheduled-appt" />
-        </div>
-        <div class="fg">
-          <label>Next contact attempt (if no appt)</label>
-          <input type="date" id="f-next-outreach" />
         </div>
       </div>
     </div>
@@ -542,6 +562,7 @@ window.addEventListener('DOMContentLoaded', () => {
   currentCoach = 'chris';
   document.getElementById('tb-coach-name').textContent = 'Chris';
   document.getElementById('tb-week').textContent = weekLabel();
+  loadCadence();
   load();
   renderTable();
   updateOutreachBadge();
@@ -604,6 +625,13 @@ function activityLabel(n) {
   return labels[n] || '';
 }
 
+function addDays(dateStr, days) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0,10);
+}
+
 function fmtDate(str) {
   if (!str) return '—';
   const d = new Date(str + 'T00:00:00');
@@ -655,7 +683,7 @@ function renderTable() {
 
   // Update sort indicators
   document.querySelectorAll('th').forEach(th => { th.classList.remove('sort-asc','sort-desc'); });
-  const fields = ['name','podioStatus','activity','update','lastContact','scheduledAppt','nextOutreach'];
+  const fields = ['name','podioStatus','activity','update','lastContact','scheduledAppt'];
   const thIdx = fields.indexOf(sortField);
   const ths = document.querySelectorAll('thead th');
   if (thIdx >= 0 && ths[thIdx]) ths[thIdx].classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
@@ -727,9 +755,6 @@ function renderTable() {
       <td class="date-cell">
         <input type="date" class="inline-date" value="${s.scheduledAppt||''}" onchange="inlineDateSave('${s.id}','scheduledAppt',this.value)" title="Next appt" style="${s.scheduledAppt?'color:#1A7A4A;font-weight:500;':''}" />
       </td>
-      <td class="date-cell">
-        <input type="date" class="inline-date" value="${s.nextOutreach||''}" onchange="inlineDateSave('${s.id}','nextOutreach',this.value)" title="Next attempt" />
-      </td>
       <td>
         <button class="btn-del" onclick="deleteStudent('${s.id}')">✕</button>
       </td>
@@ -750,7 +775,7 @@ function renderTable() {
           const checkBackLabel = s.checkBack ? fmtDate(s.checkBack) : '—';
           const podioBtn = s.podio ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener">Open Podio ↗</a>` : '';
           const apptOrOutreach = s.scheduledAppt ? `<span style="color:var(--green);font-size:11px;">Appt: ${fmtDate(s.scheduledAppt)}</span>`
-            : s.nextOutreach ? `<span style="font-size:11px;color:var(--text3);">Attempt: ${fmtDate(s.nextOutreach)}</span>` : '—';
+            : `<span style="font-size:11px;color:var(--text3);">Next due: ${fmtDate(addDays(s.lastContact, CADENCE[s.activity]||7))}</span>`;
           return `<tr>
             <td style="min-width:160px;"><div style="font-weight:500;">${escHtml(s.name)}</div>${podioBtn}</td>
             <td style="font-size:12px;color:var(--text2);">${escHtml(s.update || '—')}</td>
@@ -811,10 +836,9 @@ function toggleCheckBack() {
   if (val == 6) {
     // Auto-populate from next scheduled appt or next outreach
     const appt = document.getElementById('f-scheduled-appt').value;
-    const outreach = document.getElementById('f-next-outreach').value;
     const checkback = document.getElementById('f-checkback');
     if (!checkback.value) {
-      checkback.value = appt || outreach || '';
+      checkback.value = appt || '';
     }
   }
 }
@@ -822,7 +846,7 @@ function toggleCheckBack() {
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'Add student';
   document.getElementById('edit-id').value = '';
-  ['f-name','f-podio','f-podio-status','f-coach','f-update','f-last-contact','f-scheduled-appt','f-next-outreach','f-checkback'].forEach(id => {
+  ['f-name','f-podio','f-podio-status','f-coach','f-update','f-last-contact','f-scheduled-appt','f-checkback'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('f-activity').value = '2';
@@ -842,7 +866,6 @@ function openEditModal(id) {
   document.getElementById('f-update').value = s.update || '';
   document.getElementById('f-last-contact').value = s.lastContact || '';
   document.getElementById('f-scheduled-appt').value = s.scheduledAppt || '';
-  document.getElementById('f-next-outreach').value = s.nextOutreach || '';
   document.getElementById('f-checkback').value = s.checkBack || '';
   toggleCheckBack();
   document.getElementById('student-modal').classList.add('open');
@@ -862,7 +885,6 @@ function saveStudent() {
     update: document.getElementById('f-update').value.trim(),
     lastContact: document.getElementById('f-last-contact').value,
     scheduledAppt: document.getElementById('f-scheduled-appt').value,
-    nextOutreach: document.getElementById('f-next-outreach').value,
     checkBack: document.getElementById('f-checkback').value,
     updatedAt: new Date().toISOString(),
   };
@@ -934,15 +956,15 @@ function renderReport() {
     html += `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--text3);margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border);">${g.label} (${list.length})</div>`;
     list.forEach(s => {
       const bClass = 'b' + s.activity;
-      const nextLine = s.scheduledAppt
+      const nextDue = s.scheduledAppt
         ? `<span style="color:var(--green);font-size:11px;">📅 Appt: ${fmtDate(s.scheduledAppt)}</span>`
-        : s.nextOutreach
-        ? `<span style="color:var(--text3);font-size:11px;">📞 Next attempt: ${fmtDate(s.nextOutreach)}</span>`
-        : '';
+        : s.lastContact
+        ? `<span style="color:var(--text3);font-size:11px;">📅 Next due: ${fmtDate(addDays(s.lastContact, CADENCE[s.activity]||7))}</span>`
+        : `<span style="color:var(--text3);font-size:11px;">No contact date set</span>`;
       html += `<div style="padding:8px 0;border-bottom:1px solid var(--border);display:grid;grid-template-columns:170px 1fr;gap:12px;align-items:start;">
         <div>
           <div style="font-weight:600;font-size:13px;color:var(--text);">${escHtml(s.name)}</div>
-          <div style="margin-top:3px;">${nextLine}</div>
+          <div style="margin-top:3px;">${nextDue}</div>
         </div>
         <div style="font-size:13px;color:var(--text2);">${escHtml(s.update || 'No update entered.')}</div>
       </div>`;
@@ -1050,7 +1072,7 @@ function markOutreachComplete(id) {
   const student = students.find(s => s.id === id);
   if (!student) return;
   student.lastContact = today;
-  student.nextOutreach = '';
+  student.scheduledAppt = '';
   student.updatedAt = new Date().toISOString();
   save_data();
   renderOutreach();
@@ -1288,7 +1310,6 @@ function handleCSVImport(event) {
         update: row.status_update || '',
         lastContact: parseDate(row.last_contact),
         scheduledAppt: parseDate(row.scheduled_appt),
-        nextOutreach: parseDate(row.next_outreach),
         updatedAt: new Date().toISOString(),
       };
       if (existing) { students[students.findIndex(s => s.id === existing.id)] = data; }
@@ -1310,11 +1331,52 @@ function switchTab(name) {
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   document.querySelectorAll('.tab')[name === 'roster' ? 0 : 1].classList.add('active');
-  if (name === 'outreach') renderOutreach();
+  if (name === 'outreach') { renderOutreach(); renderAppts(); }
 }
 
 // ── OUTREACH CADENCE ─────────────────────────────────────
-const CADENCE = { 1: 2, 2: 7, 3: 3, 4: 14, 5: 30 };
+let CADENCE = { 1: 2, 2: 7, 3: 3, 4: 14, 5: 30 };
+let urgencyFilter = null;
+
+function saveCadence() {
+  [1,2,3,4,5].forEach(n => {
+    const val = parseInt(document.getElementById('cadence-' + n)?.value);
+    if (val > 0) CADENCE[n] = val;
+  });
+  localStorage.setItem('cd_cadence', JSON.stringify(CADENCE));
+  renderOutreach();
+}
+
+function loadCadence() {
+  const saved = localStorage.getItem('cd_cadence');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      Object.assign(CADENCE, parsed);
+    } catch(e) {}
+  }
+}
+
+function setUrgencyFilter(level) {
+  urgencyFilter = urgencyFilter === level ? null : level;
+  ['urgent','due','soon'].forEach(l => {
+    const el = document.getElementById('urgency-filter-' + l);
+    if (!el) return;
+    if (urgencyFilter === l) {
+      el.style.border = `1px solid ${l==='urgent'?'#E53E3E':l==='due'?'#D69E2E':'#38A169'}`;
+      el.style.background = l==='urgent'?'#FEE':l==='due'?'#FFFBEB':'#F0FFF4';
+    } else {
+      el.style.border = '1px solid transparent';
+      el.style.background = '';
+    }
+  });
+  const clearBtn = document.getElementById('urgency-clear-btn');
+  if (clearBtn) {
+    clearBtn.textContent = urgencyFilter ? '✕ Clear' : '';
+    clearBtn.style.display = urgencyFilter ? 'inline' : 'none';
+  }
+  renderOutreach();
+}
 
 function daysSince(dateStr) {
   if (!dateStr) return 999;
@@ -1326,23 +1388,33 @@ function daysSince(dateStr) {
 function outreachUrgency(student) {
   if (student.activity == 6) {
     const today = new Date(); today.setHours(0,0,0,0);
-    // Show in outreach if they have a future scheduled appt or next outreach date
     const apptDate = student.scheduledAppt ? new Date(student.scheduledAppt + 'T00:00:00') : null;
-    const outreachDate = student.nextOutreach ? new Date(student.nextOutreach + 'T00:00:00') : null;
-    const relevantDate = apptDate || outreachDate;
-    if (relevantDate) {
-      const diff = Math.floor((today - relevantDate) / (1000 * 60 * 60 * 24));
+    if (apptDate) {
+      const diff = Math.floor((today - apptDate) / (1000 * 60 * 60 * 24));
       if (diff > 0) return { level: 'urgent', days: diff, overdueDays: diff, cadence: 0, onHold: true };
       if (diff === 0) return { level: 'due', days: 0, overdueDays: 0, cadence: 0, onHold: true };
       if (diff >= -2) return { level: 'soon', days: diff, overdueDays: diff, cadence: 0, onHold: true };
     }
-    // Check-back date resurfacing
     if (student.checkBack) {
       const checkBack = new Date(student.checkBack + 'T00:00:00');
-      if (checkBack <= today) return { level: 'urgent', days: 0, overdueDays: 1, cadence: 0, resurfaced: true };
+      const today2 = new Date(); today2.setHours(0,0,0,0);
+      if (checkBack <= today2) return { level: 'urgent', days: 0, overdueDays: 1, cadence: 0, resurfaced: true };
     }
     return null;
   }
+
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Priority 1: Future scheduled appointment — suppress from outreach entirely (handled in appts tab)
+  if (student.scheduledAppt) {
+    const apptDate = new Date(student.scheduledAppt + 'T00:00:00');
+    if (apptDate >= today) return null; // future appt — not in outreach due
+    // Past appt not cleared — treat as overdue outreach
+    const daysAgo = Math.floor((today - apptDate) / (1000*60*60*24));
+    return { level: 'urgent', days: daysAgo, overdueDays: daysAgo, cadence: 0, pastAppt: true };
+  }
+
+  // Priority 2: Cadence (ignores next outreach date)
   const cadence = CADENCE[student.activity] || 7;
   const days = daysSince(student.lastContact);
   const overdueDays = days - cadence;
@@ -1350,6 +1422,147 @@ function outreachUrgency(student) {
   if (overdueDays === 0) return { level: 'due', days, overdueDays: 0, cadence };
   if (overdueDays >= -2) return { level: 'soon', days, overdueDays, cadence };
   return null;
+}
+
+// ── SUB-TABS (outreach / appts) ───────────────────────────
+let apptView = 'list';
+let apptCalMonth = new Date();
+
+function switchSubTab(name) {
+  document.getElementById('subtab-outreach').style.display = name === 'outreach' ? 'block' : 'none';
+  document.getElementById('subtab-appts').style.display = name === 'appts' ? 'block' : 'none';
+  document.getElementById('subtab-btn-outreach').classList.toggle('active', name === 'outreach');
+  document.getElementById('subtab-btn-appts').classList.toggle('active', name === 'appts');
+  if (name === 'appts') renderAppts();
+}
+
+function switchApptView(view) {
+  apptView = view;
+  document.getElementById('appts-list-view').style.display = view === 'list' ? 'block' : 'none';
+  document.getElementById('appts-cal-view').style.display = view === 'calendar' ? 'block' : 'none';
+  document.getElementById('appts-list-btn').style.cssText = view === 'list'
+    ? 'font-size:12px;padding:5px 12px;background:var(--text);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:inherit;'
+    : 'font-size:12px;padding:5px 12px;';
+  document.getElementById('appts-cal-btn').style.cssText = view === 'calendar'
+    ? 'font-size:12px;padding:5px 12px;background:var(--text);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:inherit;'
+    : 'font-size:12px;padding:5px 12px;';
+  renderAppts();
+}
+
+function renderAppts() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const futureAppts = students.filter(s => s.scheduledAppt && new Date(s.scheduledAppt + 'T00:00:00') >= today)
+    .sort((a,b) => a.scheduledAppt.localeCompare(b.scheduledAppt));
+  const pastAppts = students.filter(s => s.scheduledAppt && new Date(s.scheduledAppt + 'T00:00:00') < today);
+  const badge = document.getElementById('appts-count-badge');
+  if (badge) { badge.textContent = futureAppts.length; badge.style.display = futureAppts.length ? 'inline-block' : 'none'; }
+  if (apptView === 'list') renderApptsListView(futureAppts, pastAppts, today);
+  else renderApptCalView(futureAppts);
+}
+
+function renderApptsListView(futureAppts, pastAppts, today) {
+  const listWrap = document.getElementById('appts-list-view');
+  let html = '';
+  if (!futureAppts.length && !pastAppts.length) {
+    listWrap.innerHTML = '<div class="outreach-empty">No scheduled appointments. Edit a student to add one.</div>';
+    return;
+  }
+  if (futureAppts.length) {
+    html += `<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px;">Upcoming</div>`;
+    futureAppts.forEach(s => {
+      const apptDate = new Date(s.scheduledAppt + 'T00:00:00');
+      const daysUntil = Math.floor((apptDate - today) / (1000*60*60*24));
+      const daysLabel = daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `In ${daysUntil} days`;
+      const urgColor = daysUntil === 0 ? '#D69E2E' : daysUntil <= 2 ? '#38A169' : 'var(--accent)';
+      const podioBtn = s.podio ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener">Open Podio ↗</a>` : '';
+      html += `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${urgColor};border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;">
+        <div>
+          <div style="font-weight:500;font-size:14px;">${escHtml(s.name)}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:3px;">${escHtml(s.update || 'No status update')}</div>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+            <span class="badge b${s.activity}">${activityLabel(s.activity)}</span>
+            ${podioBtn}
+            <label style="font-size:11px;color:var(--text3);">Appt date: <input type="date" value="${s.scheduledAppt}" onchange="outreachUpdateField('${s.id}','scheduledAppt',this.value);renderAppts();" class="inline-date" style="margin-left:4px;" /></label>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:13px;font-weight:600;color:${urgColor};">${daysLabel}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">${fmtDate(s.scheduledAppt)}</div>
+          <button class="btn-complete" style="margin-top:8px;" onclick="markApptComplete('${s.id}')">✓ Appt done</button>
+        </div>
+      </div>`;
+    });
+  }
+  if (pastAppts.length) {
+    html += `<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#E53E3E;margin:16px 0 8px;">⚠ Past appointments — needs follow-up</div>`;
+    pastAppts.forEach(s => {
+      const daysAgo = Math.floor((today - new Date(s.scheduledAppt + 'T00:00:00')) / (1000*60*60*24));
+      const podioBtn = s.podio ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener">Open Podio ↗</a>` : '';
+      html += `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid #E53E3E;border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;">
+        <div>
+          <div style="font-weight:500;font-size:14px;">${escHtml(s.name)}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:3px;">${escHtml(s.update || 'No status update')}</div>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:6px;">${podioBtn}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:12px;font-weight:600;color:#E53E3E;">${daysAgo} day${daysAgo!==1?'s':''} ago</div>
+          <div style="font-size:11px;color:var(--text3);">${fmtDate(s.scheduledAppt)}</div>
+          <button class="btn-complete" style="margin-top:8px;" onclick="markApptComplete('${s.id}')">✓ Mark complete</button>
+        </div>
+      </div>`;
+    });
+  }
+  listWrap.innerHTML = html;
+}
+
+function renderApptCalView(futureAppts) {
+  const calWrap = document.getElementById('appts-cal-view');
+  const year = apptCalMonth.getFullYear();
+  const month = apptCalMonth.getMonth();
+  const monthLabel = apptCalMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const apptMap = {};
+  futureAppts.forEach(s => { if (!apptMap[s.scheduledAppt]) apptMap[s.scheduledAppt] = []; apptMap[s.scheduledAppt].push(s); });
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+  let html = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    <button class="btn-sec" onclick="changeApptMonth(-1)" style="font-size:12px;padding:5px 10px;">← Prev</button>
+    <div style="font-size:14px;font-weight:600;">${monthLabel}</div>
+    <button class="btn-sec" onclick="changeApptMonth(1)" style="font-size:12px;padding:5px 10px;">Next →</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
+    ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div style="text-align:center;font-size:10px;font-weight:600;color:var(--text3);padding:4px;">${d}</div>`).join('')}
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">`;
+  for (let i = 0; i < firstDay; i++) html += `<div style="min-height:60px;"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = new Date(dateStr+'T00:00:00').getTime() === today.getTime();
+    const appts = apptMap[dateStr] || [];
+    html += `<div style="min-height:60px;background:${appts.length?'var(--accent-bg)':'var(--surface)'};border:1px solid ${isToday?'var(--accent)':'var(--border)'};border-radius:6px;padding:4px;">
+      <div style="font-size:11px;font-weight:${isToday?'700':'400'};color:${isToday?'var(--accent)':'var(--text2)'};">${d}</div>
+      ${appts.map(s=>`<div style="font-size:10px;background:var(--accent);color:#fff;border-radius:4px;padding:1px 4px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(s.name)}">${escHtml(s.name.split(' ')[0])}</div>`).join('')}
+    </div>`;
+  }
+  html += `</div>`;
+  calWrap.innerHTML = html;
+}
+
+function changeApptMonth(dir) {
+  apptCalMonth = new Date(apptCalMonth.getFullYear(), apptCalMonth.getMonth() + dir, 1);
+  renderApptCalView(students.filter(s => s.scheduledAppt && new Date(s.scheduledAppt+'T00:00:00') >= new Date().setHours(0,0,0,0)));
+}
+
+function markApptComplete(id) {
+  const today = new Date().toISOString().slice(0,10);
+  const student = students.find(s => s.id === id);
+  if (!student) return;
+  student.lastContact = today;
+  student.scheduledAppt = '';
+  student.updatedAt = new Date().toISOString();
+  save_data();
+  renderTable();
+  renderAppts();
 }
 
 function renderOutreach() {
@@ -1360,15 +1573,23 @@ function renderOutreach() {
   const filterLabels = { all: '', deal: '· Filtered: In a deal', action: '· Filtered: Taking action', inactive: '· Filtered: Inactive/stalling', onhold: '· Filtered: On hold' };
   document.getElementById('outreach-filter-label').textContent = filterLabels[statFilter] || '';
 
+  // Update cadence inputs to reflect current values
+  [1,2,3,4,5].forEach(n => {
+    const el = document.getElementById('cadence-' + n);
+    if (el) el.value = CADENCE[n];
+  });
+
   const toContact = [];
   students.forEach(s => {
-    // Apply stat filter
     if (statFilter === 'deal' && s.activity != 1) return;
     if (statFilter === 'action' && s.activity != 2) return;
     if (statFilter === 'inactive' && (s.activity < 3 || s.activity > 5)) return;
     if (statFilter === 'onhold' && s.activity != 6) return;
     const u = outreachUrgency(s);
-    if (u) toContact.push({ ...s, urgency: u });
+    if (!u) return;
+    // Apply urgency filter
+    if (urgencyFilter && u.level !== urgencyFilter) return;
+    toContact.push({ ...s, urgency: u });
   });
 
   const orderMap = { urgent: 0, due: 1, soon: 2 };
@@ -1389,15 +1610,18 @@ function renderOutreach() {
       const u = s.urgency;
       const lvl = u.level;
       let daysLabel = u.resurfaced ? '⏸ Check-back date reached!'
-        : u.onHold && u.level === 'urgent' ? `⏸ On hold — appt/attempt ${u.overdueDays} day${u.overdueDays!==1?'s':''} overdue`
-        : u.onHold && u.level === 'due' ? '⏸ On hold — appt/attempt due today'
-        : u.onHold && u.level === 'soon' ? `⏸ On hold — appt/attempt in ${Math.abs(u.overdueDays)} day${Math.abs(u.overdueDays)!==1?'s':''}`
+        : u.pastAppt ? `📅 Appt ${u.overdueDays} day${u.overdueDays!==1?'s':''} ago — needs follow-up`
+        : u.onHold && u.level === 'urgent' ? `⏸ On hold — appt ${u.overdueDays} day${u.overdueDays!==1?'s':''} overdue`
+        : u.onHold && u.level === 'due' ? '⏸ On hold — appt due today'
+        : u.onHold && u.level === 'soon' ? `⏸ On hold — appt in ${Math.abs(u.overdueDays)} day${Math.abs(u.overdueDays)!==1?'s':''}`
         : lvl === 'urgent' ? `${u.overdueDays} day${u.overdueDays !== 1 ? 's' : ''} overdue`
         : lvl === 'due' ? 'Due today'
         : `Due in ${Math.abs(u.overdueDays)} day${Math.abs(u.overdueDays) !== 1 ? 's' : ''}`;
       const nextScheduled = s.scheduledAppt
         ? `<span style="color:var(--green);font-weight:500;">Appt: ${fmtDate(s.scheduledAppt)}</span>`
-        : s.nextOutreach ? `Next attempt: ${fmtDate(s.nextOutreach)}` : 'No call scheduled';
+        : s.lastContact
+        ? `Next due: ${fmtDate(addDays(s.lastContact, CADENCE[s.activity]||7))}`
+        : 'No contact date set';
       const podioBtn = s.podio ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener">Open Podio ↗</a>` : '';
       return `<div class="outreach-card ${lvl}">
         <div style="flex:1;">
@@ -1413,9 +1637,6 @@ function renderOutreach() {
             </label>
             <label style="font-size:11px;color:var(--text3);">Next appt:
               <input type="date" value="${s.scheduledAppt||''}" onchange="outreachUpdateField('${s.id}','scheduledAppt',this.value)" class="inline-date" style="margin-left:4px;${s.scheduledAppt?'color:#1A7A4A;font-weight:500;':''}" />
-            </label>
-            <label style="font-size:11px;color:var(--text3);">Next attempt:
-              <input type="date" value="${s.nextOutreach||''}" onchange="outreachUpdateField('${s.id}','nextOutreach',this.value)" class="inline-date" style="margin-left:4px;" />
             </label>
           </div>
         </div>
@@ -1489,12 +1710,28 @@ let icalToContact = [];
 function previewIcal() {
   icalToContact = students.map(s => ({ ...s, urgency: outreachUrgency(s) })).filter(s => s.urgency);
   if (!icalToContact.length) { alert('No students need outreach today.'); return; }
+  renderIcalPreview(null); // null = no urgency filter, show all
+  document.getElementById('ical-modal').classList.add('open');
+}
 
+let icalUrgencyFilter = null;
+
+function setIcalUrgencyFilter(level) {
+  icalUrgencyFilter = icalUrgencyFilter === level ? null : level;
+  renderIcalPreview(icalUrgencyFilter);
+}
+
+function renderIcalPreview(filter) {
   const now = new Date();
   const dateLabel = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   const urgentCount = icalToContact.filter(s => s.urgency.level === 'urgent').length;
   const dueCount = icalToContact.filter(s => s.urgency.level === 'due').length;
   const soonCount = icalToContact.filter(s => s.urgency.level === 'soon').length;
+
+  const pillStyle = (lvl, bg, color, border) => {
+    const active = filter === lvl;
+    return `background:${active ? color : bg};color:${active ? '#fff' : color};border:1px solid ${border};border-radius:20px;padding:3px 12px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;${active?'box-shadow:0 0 0 2px '+color+'44;':''}`;
+  };
 
   let html = `
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:1rem;">
@@ -1504,13 +1741,14 @@ function previewIcal() {
       <div style="font-size:13px;color:var(--text);margin-bottom:2px;"><strong>Title:</strong> Student Outreach — ${icalToContact.length} student${icalToContact.length !== 1 ? 's' : ''}</div>
       <div style="font-size:13px;color:var(--text);"><strong>Reminder:</strong> 15 minutes before</div>
     </div>
-    <div style="display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
-      ${urgentCount ? `<span style="background:#FEE;color:#E53E3E;border:1px solid #FBBABA;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">🔴 ${urgentCount} overdue</span>` : ''}
-      ${dueCount ? `<span style="background:#FFFBEB;color:#D69E2E;border:1px solid #F6E05E;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">🟡 ${dueCount} due today</span>` : ''}
-      ${soonCount ? `<span style="background:#F0FFF4;color:#38A169;border:1px solid #9AE6B4;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">🟢 ${soonCount} coming up soon</span>` : ''}
+    <div style="display:flex;gap:8px;margin-bottom:0.75rem;flex-wrap:wrap;align-items:center;">
+      ${urgentCount ? `<span onclick="setIcalUrgencyFilter('urgent')" style="${pillStyle('urgent','#FEE','#E53E3E','#FBBABA')}">🔴 ${urgentCount} overdue</span>` : ''}
+      ${dueCount ? `<span onclick="setIcalUrgencyFilter('due')" style="${pillStyle('due','#FFFBEB','#D69E2E','#F6E05E')}">🟡 ${dueCount} due today</span>` : ''}
+      ${soonCount ? `<span onclick="setIcalUrgencyFilter('soon')" style="${pillStyle('soon','#F0FFF4','#38A169','#9AE6B4')}">🟢 ${soonCount} coming up soon</span>` : ''}
+      ${filter ? `<span onclick="setIcalUrgencyFilter(null)" style="font-size:11px;color:var(--text3);cursor:pointer;margin-left:4px;">✕ Show all</span>` : ''}
     </div>
     <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
-      <span>Students included</span>
+      <span>Students included ${filter ? `<span style="font-weight:400;color:var(--text3);">· filtered by ${filter === 'urgent' ? 'overdue' : filter === 'due' ? 'due today' : 'coming up soon'}</span>` : ''}</span>
       <span style="font-weight:400;font-size:11px;color:var(--accent);cursor:pointer;" onclick="toggleAllIcalStudents()">Select / deselect all</span>
     </div>`;
 
@@ -1521,6 +1759,7 @@ function previewIcal() {
   ];
 
   groups.forEach(g => {
+    if (filter && filter !== g.lvl) return; // skip if filtered out
     const list = icalToContact.filter(s => s.urgency.level === g.lvl);
     if (!list.length) return;
     html += `<div style="font-size:11px;font-weight:600;color:${g.color};margin:10px 0 4px;text-transform:uppercase;letter-spacing:.06em;">${g.label}</div>`;
@@ -1543,7 +1782,6 @@ function previewIcal() {
   });
 
   document.getElementById('ical-preview-content').innerHTML = html;
-  document.getElementById('ical-modal').classList.add('open');
 }
 
 function toggleAllIcalStudents() {
