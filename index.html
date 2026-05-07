@@ -520,7 +520,8 @@
           <div id="bulk-order-preview" style="font-size:12px;color:var(--text);line-height:1.8;"></div>
         </div>
         <div style="background:var(--accent-bg);border:1px solid #C5D3F8;border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--accent);">
-          <span id="bulk-record-status">Ready — click Record to begin</span>
+          <div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">Transcription</div>
+          <div id="bulk-record-status" style="min-height:80px;max-height:140px;overflow-y:auto;line-height:1.6;word-break:break-word;">Ready — click Record to begin</div>
         </div>
       </div>
 
@@ -929,15 +930,24 @@ function archiveCurrentUpdate(student) {
 
 // ── INLINE EDITING ────────────────────────────────────────
 function inlineEdit(span, field, id) {
+  // Save any existing active inline input first
+  const existing = document.querySelector('.inline-input-active');
+  if (existing) { existing.blur(); return; }
+
   const current = students.find(s => s.id === id)?.[field] || '';
   const input = document.createElement('input');
   input.type = 'text';
-  input.className = 'inline-input';
+  input.className = 'inline-input inline-input-active';
   input.value = current;
   span.replaceWith(input);
   input.focus();
   input.select();
+
+  let saved = false;
   const save = () => {
+    if (saved) return;
+    saved = true;
+    input.classList.remove('inline-input-active');
     const student = students.find(s => s.id === id);
     if (student) {
       if (field === 'update') archiveCurrentUpdate(student);
@@ -949,7 +959,10 @@ function inlineEdit(span, field, id) {
     if (document.getElementById('tab-outreach').classList.contains('active')) renderOutreach();
   };
   input.addEventListener('blur', save);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') renderTable(); });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { saved = true; renderTable(); }
+  });
 }
 
 function inlineDateSave(id, field, value) {
@@ -1346,7 +1359,7 @@ function startBulkDictation() {
         const student = bulkSelectedStudents[i];
         if (!student) break;
         const condensed = await callClaude(system, parts[i]);
-        if (condensed) bulkPendingUpdates.push({ student, condensed, approved: true });
+        if (condensed) bulkPendingUpdates.push({ studentId: student.id, student, condensed, approved: true });
       }
 
       // Show preview
@@ -1365,7 +1378,11 @@ function startBulkDictation() {
             </label>
           </div>
           ${u.student.update ? `<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Previous: ${escHtml(u.student.update)}</div>` : ''}
-          <input type="text" id="bulk-edit-${i}" value="${escHtml(u.condensed)}" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:13px;background:var(--bg);color:var(--text);outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+          <input type="text" id="bulk-edit-${i}" value="${escHtml(u.condensed)}" 
+            style="width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:13px;background:var(--bg);color:var(--text);outline:none;transition:all 0.2s;" 
+            onfocus="expandBulkInput(this)" 
+            onblur="collapseBulkInput(this)"
+          />
         </div>`).join('');
 
       statusText.textContent = `✅ ${bulkPendingUpdates.length} update${bulkPendingUpdates.length!==1?'s':''} ready — review below`;
@@ -1402,6 +1419,29 @@ function toggleBulkApproval(i) {
   item.style.background = checked ? 'var(--surface)' : 'var(--surface2)';
 }
 
+function expandBulkInput(input) {
+  const val = input.value;
+  const textarea = document.createElement('textarea');
+  textarea.id = input.id;
+  textarea.value = val;
+  textarea.style.cssText = 'width:100%;border:1px solid var(--accent);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:13px;background:#fff;color:var(--text);outline:none;resize:vertical;min-height:60px;transition:all 0.2s;';
+  input.replaceWith(textarea);
+  textarea.focus();
+  textarea.setSelectionRange(val.length, val.length);
+  textarea.addEventListener('blur', () => collapseBulkInput(textarea));
+}
+
+function collapseBulkInput(el) {
+  const val = el.value;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.id = el.id;
+  input.value = val;
+  input.style.cssText = 'width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:13px;background:var(--bg);color:var(--text);outline:none;transition:all 0.2s;';
+  input.addEventListener('focus', () => expandBulkInput(input));
+  el.replaceWith(input);
+}
+
 function confirmBulkSave() {
   let saved = 0;
   bulkPendingUpdates.forEach((u, i) => {
@@ -1409,16 +1449,18 @@ function confirmBulkSave() {
     if (!approved) return;
     const editedText = document.getElementById('bulk-edit-' + i)?.value.trim();
     if (!editedText) return;
-    archiveCurrentUpdate(u.student);
-    u.student.update = editedText;
-    u.student.updatedAt = new Date().toISOString();
+    // Look up student fresh by ID to ensure we have the live reference
+    const student = students.find(s => s.id === u.student.id);
+    if (!student) return;
+    archiveCurrentUpdate(student);
+    student.update = editedText;
+    student.updatedAt = new Date().toISOString();
     saved++;
   });
   save_data();
   renderTable();
   closeModal('bulk-modal');
   if (saved) {
-    // Brief toast-style confirmation
     const toast = document.createElement('div');
     toast.textContent = `✅ Saved ${saved} student update${saved!==1?'s':''}`;
     toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1917;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-family:DM Sans,sans-serif;z-index:9999;opacity:1;transition:opacity 0.5s;';
@@ -1525,7 +1567,7 @@ function handleCSVImport(event) {
       count++;
     }
 
-    save();
+    save_data();
     renderTable();
     alert(`✅ Successfully imported ${count} students!`);
   };
