@@ -319,7 +319,7 @@
 
       <!-- Sub-tabs -->
       <div style="display:flex;gap:2px;margin-bottom:1.25rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:3px;width:fit-content;">
-        <button class="tab active" id="subtab-btn-outreach" onclick="switchSubTab('outreach')" style="font-size:12px;padding:5px 14px;">📞 Outreach due</button>
+        <button class="tab active" id="subtab-btn-outreach" onclick="switchSubTab('outreach')" style="font-size:12px;padding:5px 14px;">📞 Outreach due <span id="outreach-due-badge" style="display:none;background:#E53E3E;color:#fff;border-radius:10px;font-size:10px;font-weight:600;padding:1px 6px;margin-left:4px;">0</span></button>
         <button class="tab" id="subtab-btn-appts" onclick="switchSubTab('appts')" style="font-size:12px;padding:5px 14px;">📅 Scheduled appts <span id="appts-count-badge" style="display:none;background:#534AB7;color:#fff;border-radius:10px;font-size:10px;font-weight:600;padding:1px 6px;margin-left:4px;">0</span></button>
       </div>
 
@@ -1753,6 +1753,10 @@ function renderOutreach() {
   const badge = document.getElementById('outreach-count');
   if (urgentCount > 0) { badge.textContent = urgentCount; badge.style.display = 'inline-block'; }
   else { badge.style.display = 'none'; }
+
+  // Update outreach due sub-tab badge
+  const dueBadge = document.getElementById('outreach-due-badge');
+  if (dueBadge) { dueBadge.textContent = toContact.length; dueBadge.style.display = toContact.length ? 'inline-block' : 'none'; }
 
   document.getElementById('ical-btn').style.display = toContact.length ? 'block' : 'none';
 
