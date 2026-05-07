@@ -337,7 +337,7 @@
           <div class="legend-item" id="urgency-filter-urgent" onclick="setUrgencyFilter('urgent')" style="cursor:pointer;padding:4px 10px;border-radius:20px;border:1px solid transparent;transition:all 0.15s;"><div class="legend-dot" style="background:#E53E3E"></div> Overdue — reach out now</div>
           <div class="legend-item" id="urgency-filter-due" onclick="setUrgencyFilter('due')" style="cursor:pointer;padding:4px 10px;border-radius:20px;border:1px solid transparent;transition:all 0.15s;"><div class="legend-dot" style="background:#D69E2E"></div> Due today</div>
           <div class="legend-item" id="urgency-filter-soon" onclick="setUrgencyFilter('soon')" style="cursor:pointer;padding:4px 10px;border-radius:20px;border:1px solid transparent;transition:all 0.15s;"><div class="legend-dot" style="background:#38A169"></div> Coming up soon</div>
-          <div style="font-size:11px;color:var(--text3);margin-left:6px;align-self:center;cursor:pointer;" id="urgency-clear-btn"></div>
+          <div style="font-size:11px;color:var(--text3);margin-left:6px;align-self:center;cursor:pointer;" id="urgency-clear-btn" onclick="setUrgencyFilter(null)"></div>
         </div>
 
         <div class="cadence-info" style="flex-wrap:wrap;gap:8px;">
