@@ -509,8 +509,26 @@
         <strong>Step 1:</strong> Select the students you want to update, in the order you'll speak about them.<br/>
         <strong>Step 2:</strong> Hit record and say each update, saying <strong>"next student"</strong> between each one.
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);">Select students (in order)</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center;">
+        <input type="text" id="bulk-search" placeholder="🔍 Search students…" oninput="renderBulkList()" style="flex:1;min-width:140px;border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;font-family:inherit;font-size:12px;background:var(--bg);color:var(--text);outline:none;" />
+        <select id="bulk-sort" onchange="renderBulkList()" style="border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;font-family:inherit;font-size:12px;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">
+          <option value="name">Sort: Name A–Z</option>
+          <option value="name-desc">Sort: Name Z–A</option>
+          <option value="activity">Sort: Activity level</option>
+          <option value="update-oldest">Sort: Update oldest first</option>
+          <option value="update-newest">Sort: Update newest first</option>
+          <option value="lastContact-oldest">Sort: Last contact oldest</option>
+          <option value="lastContact-newest">Sort: Last contact newest</option>
+        </select>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-size:11px;color:var(--text3);" id="bulk-count-label">0 students</div>
+          <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);cursor:pointer;">
+            <input type="checkbox" id="bulk-include-onhold" onchange="renderBulkList()" style="accent-color:var(--accent);" />
+            Include on-hold
+          </label>
+        </div>
         <span style="font-size:11px;color:var(--accent);cursor:pointer;" onclick="toggleAllBulk()">Select / deselect all</span>
       </div>
       <div id="bulk-student-list" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);"></div>
@@ -977,7 +995,17 @@ function inlineDateSave(id, field, value) {
 
 function inlineSelectSave(id, field, value) {
   const student = students.find(s => s.id === id);
-  if (student) { student[field] = parseInt(value); student.updatedAt = new Date().toISOString(); save_data(); updateOutreachBadge(); }
+  if (student) {
+    student[field] = parseInt(value);
+    // Auto-set status update to "On hold" if switching to on-hold and no update exists
+    if (field === 'activity' && parseInt(value) === 6 && !student.update) {
+      student.update = 'On hold';
+    }
+    student.updatedAt = new Date().toISOString();
+    save_data();
+    updateOutreachBadge();
+    renderTable();
+  }
 }
 
 function save_data() { localStorage.setItem(storageKey(), JSON.stringify(students)); }
@@ -1036,7 +1064,8 @@ function saveStudent() {
     podioStatus: document.getElementById('f-podio-status').value.trim(),
     activity: parseInt(document.getElementById('f-activity').value),
     pairedCoach: document.getElementById('f-coach').value.trim(),
-    update: document.getElementById('f-update').value.trim(),
+    update: document.getElementById('f-update').value.trim() ||
+      (parseInt(document.getElementById('f-activity').value) === 6 ? 'On hold' : ''),
     lastContact: document.getElementById('f-last-contact').value,
     scheduledAppt: document.getElementById('f-scheduled-appt').value,
     checkBack: document.getElementById('f-checkback').value,
@@ -1271,15 +1300,6 @@ async function callClaude(system, userMsg) {
 }
 
 function openBulkSelector() {
-  // Populate student checklist
-  const list = document.getElementById('bulk-student-list');
-  list.innerHTML = students.map((s, i) => `
-    <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;">
-      <input type="checkbox" class="bulk-check" data-id="${s.id}" style="width:15px;height:15px;accent-color:var(--accent);" />
-      <span style="font-size:13px;font-weight:500;">${escHtml(s.name)}</span>
-      <span class="badge b${s.activity}" style="margin-left:auto;">${activityLabel(s.activity)}</span>
-    </label>`).join('');
-
   // Reset UI
   document.getElementById('bulk-recording-area').style.display = 'none';
   document.getElementById('bulk-preview-area').style.display = 'none';
@@ -1288,8 +1308,60 @@ function openBulkSelector() {
   document.getElementById('bulk-confirm-btn').style.display = 'none';
   document.getElementById('bulk-student-list').style.display = 'block';
   document.getElementById('bulk-record-status').textContent = 'Ready — click Record to begin';
-
+  document.getElementById('bulk-search').value = '';
+  document.getElementById('bulk-sort').value = 'name';
+  document.getElementById('bulk-include-onhold').checked = false;
+  renderBulkList();
   document.getElementById('bulk-modal').classList.add('open');
+}
+
+function renderBulkList() {
+  const search = document.getElementById('bulk-search')?.value.toLowerCase() || '';
+  const sort = document.getElementById('bulk-sort')?.value || 'name';
+
+  // Keep track of already-checked IDs so they stay checked on re-render
+  const checked = new Set([...document.querySelectorAll('.bulk-check:checked')].map(b => b.dataset.id));
+
+  let list = students.filter(s => {
+    if (s.activity === 6 && !document.getElementById('bulk-include-onhold')?.checked) return false;
+    return true;
+  });
+  if (search) list = list.filter(s => s.name.toLowerCase().includes(search));
+
+  list.sort((a, b) => {
+    switch(sort) {
+      case 'name': return a.name.localeCompare(b.name);
+      case 'name-desc': return b.name.localeCompare(a.name);
+      case 'activity': return (a.activity||0) - (b.activity||0);
+      case 'update-oldest': return (a.updatedAt||'').localeCompare(b.updatedAt||'');
+      case 'update-newest': return (b.updatedAt||'').localeCompare(a.updatedAt||'');
+      case 'lastContact-oldest': return (a.lastContact||'').localeCompare(b.lastContact||'');
+      case 'lastContact-newest': return (b.lastContact||'').localeCompare(a.lastContact||'');
+      default: return 0;
+    }
+  });
+
+  const countLabel = document.getElementById('bulk-count-label');
+  if (countLabel) countLabel.textContent = `${list.length} student${list.length!==1?'s':''}`;
+
+  const listEl = document.getElementById('bulk-student-list');
+  if (!list.length) {
+    listEl.innerHTML = '<div style="padding:1rem;font-size:13px;color:var(--text3);text-align:center;">No students match your search.</div>';
+    return;
+  }
+
+  listEl.innerHTML = list.map(s => {
+    const lastUpd = s.updatedAt ? new Date(s.updatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : 'Never';
+    const lastCon = s.lastContact ? fmtDate(s.lastContact) : 'No contact';
+    return `<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;">
+      <input type="checkbox" class="bulk-check" data-id="${s.id}" ${checked.has(s.id)?'checked':''} style="width:15px;height:15px;accent-color:var(--accent);flex-shrink:0;" />
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:500;">${escHtml(s.name)}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:1px;">Last contact: ${lastCon} · Updated: ${lastUpd}</div>
+      </div>
+      <span class="badge b${s.activity}" style="flex-shrink:0;">${activityLabel(s.activity)}</span>
+    </label>`;
+  }).join('');
 }
 
 function toggleAllBulk() {
