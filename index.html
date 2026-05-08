@@ -529,6 +529,10 @@
             <input type="checkbox" id="bulk-include-onhold" onchange="renderBulkList()" style="accent-color:var(--accent);" />
             Include on-hold
           </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);cursor:pointer;">
+            <input type="checkbox" id="bulk-no-update-only" onchange="renderBulkList()" style="accent-color:var(--accent);" />
+            No update only
+          </label>
         </div>
         <span style="font-size:11px;color:var(--accent);cursor:pointer;" onclick="toggleAllBulk()">Select / deselect all</span>
       </div>
@@ -1312,6 +1316,7 @@ function openBulkSelector() {
   document.getElementById('bulk-search').value = '';
   document.getElementById('bulk-sort').value = 'no-update';
   document.getElementById('bulk-include-onhold').checked = false;
+  document.getElementById('bulk-no-update-only').checked = false;
   renderBulkList();
   document.getElementById('bulk-modal').classList.add('open');
 }
@@ -1325,6 +1330,7 @@ function renderBulkList() {
 
   let list = students.filter(s => {
     if (s.activity === 6 && !document.getElementById('bulk-include-onhold')?.checked) return false;
+    if (document.getElementById('bulk-no-update-only')?.checked && s.update && s.update !== 'On hold') return false;
     return true;
   });
   if (search) list = list.filter(s => s.name.toLowerCase().includes(search));
