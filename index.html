@@ -1441,16 +1441,27 @@ function startBulkDictation() {
     const parts = fullTranscript.trim().split(/next\s+student/i).map(p => p.trim()).filter(p => p.length > 0);
     if (parts.length === 0) { statusText.textContent = '❌ No updates found.'; return; }
 
-    const system = `You are a coaching assistant. Condense the following spoken update about a real estate coaching student into a single crisp line under 20 words. Be specific and factual. No filler words. Return only the condensed line, nothing else.`;
-
     try {
       bulkPendingUpdates = [];
-      for (let i = 0; i < parts.length; i++) {
-        const student = bulkSelectedStudents[i];
-        if (!student) break;
-        const condensed = await callClaude(system, parts[i]);
-        if (condensed) bulkPendingUpdates.push({ studentId: student.id, student, condensed, approved: true });
-      }
+
+      // Build a numbered list of all updates for a single API call
+      const studentNames = bulkSelectedStudents.slice(0, parts.length).map((s, i) => `${i+1}. ${s.name}`).join('\n');
+      const updatesList = parts.map((p, i) => `${i+1}. ${p}`).join('\n');
+
+      const system = `You are a coaching assistant. You will receive a numbered list of student names and a corresponding numbered list of spoken updates. Condense each update into a single crisp line under 20 words. Be specific and factual. No filler words.
+Return ONLY a JSON array with one entry per student, in the same order, nothing else:
+[{"index":1,"condensed":"condensed update here"},{"index":2,"condensed":"..."}]`;
+
+      const userMsg = `Students:\n${studentNames}\n\nSpoken updates:\n${updatesList}`;
+      const raw = await callClaude(system, userMsg);
+      const results = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+      results.forEach(r => {
+        const student = bulkSelectedStudents[r.index - 1];
+        if (student && r.condensed) {
+          bulkPendingUpdates.push({ studentId: student.id, student, condensed: r.condensed, approved: true });
+        }
+      });
 
       // Show preview
       document.getElementById('bulk-recording-area').style.display = 'none';
@@ -1468,9 +1479,9 @@ function startBulkDictation() {
             </label>
           </div>
           ${u.student.update ? `<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Previous: ${escHtml(u.student.update)}</div>` : ''}
-          <input type="text" id="bulk-edit-${i}" value="${escHtml(u.condensed)}" 
-            style="width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:13px;background:var(--bg);color:var(--text);outline:none;transition:all 0.2s;" 
-            onfocus="expandBulkInput(this)" 
+          <input type="text" id="bulk-edit-${i}" value="${escHtml(u.condensed)}"
+            style="width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:13px;background:var(--bg);color:var(--text);outline:none;transition:all 0.2s;"
+            onfocus="expandBulkInput(this)"
             onblur="collapseBulkInput(this)"
           />
         </div>`).join('');
