@@ -794,7 +794,9 @@ function renderTable() {
       <td style="min-width:160px;">
         <div style="font-weight:500;font-size:13px;">${escHtml(s.name)}</div>
         ${podioBtn}
-        ${pairedLabel}
+        <div style="font-size:11px;color:var(--text3);margin-top:3px;">
+          <span class="inline-edit-text" onclick="inlineEdit(this,'pairedCoach','${s.id}')" title="Click to edit co-coach">👤 ${escHtml(s.pairedCoach || 'No co-coach')}</span>
+        </div>
       </td>
       <td style="font-size:12px;">
         <span class="inline-edit-text" onclick="inlineEdit(this,'podioStatus','${s.id}')" title="Click to edit">${escHtml(s.podioStatus || '—')}</span>
@@ -815,7 +817,10 @@ function renderTable() {
         <input type="date" class="inline-date" value="${s.scheduledAppt||''}" onchange="inlineDateSave('${s.id}','scheduledAppt',this.value)" title="Next appt" style="${s.scheduledAppt?'color:#1A7A4A;font-weight:500;':''}" />
       </td>
       <td>
-        <button class="btn-del" onclick="deleteStudent('${s.id}')">✕</button>
+        <div class="row-actions">
+          <button class="btn-edit" onclick="openEditModal('${s.id}')" title="Edit all fields">✏️</button>
+          <button class="btn-del" onclick="deleteStudent('${s.id}')">✕</button>
+        </div>
       </td>
     </tr>`;
   }).join('');
