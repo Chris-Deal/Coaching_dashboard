@@ -512,6 +512,7 @@
       <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center;">
         <input type="text" id="bulk-search" placeholder="🔍 Search students…" oninput="renderBulkList()" style="flex:1;min-width:140px;border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;font-family:inherit;font-size:12px;background:var(--bg);color:var(--text);outline:none;" />
         <select id="bulk-sort" onchange="renderBulkList()" style="border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;font-family:inherit;font-size:12px;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">
+          <option value="no-update">Sort: No update first</option>
           <option value="name">Sort: Name A–Z</option>
           <option value="name-desc">Sort: Name Z–A</option>
           <option value="activity">Sort: Activity level</option>
@@ -1309,7 +1310,7 @@ function openBulkSelector() {
   document.getElementById('bulk-student-list').style.display = 'block';
   document.getElementById('bulk-record-status').textContent = 'Ready — click Record to begin';
   document.getElementById('bulk-search').value = '';
-  document.getElementById('bulk-sort').value = 'name';
+  document.getElementById('bulk-sort').value = 'no-update';
   document.getElementById('bulk-include-onhold').checked = false;
   renderBulkList();
   document.getElementById('bulk-modal').classList.add('open');
@@ -1330,6 +1331,12 @@ function renderBulkList() {
 
   list.sort((a, b) => {
     switch(sort) {
+      case 'no-update':
+        const aEmpty = !a.update || a.update === 'On hold';
+        const bEmpty = !b.update || b.update === 'On hold';
+        if (aEmpty && !bEmpty) return -1;
+        if (!aEmpty && bEmpty) return 1;
+        return a.name.localeCompare(b.name);
       case 'name': return a.name.localeCompare(b.name);
       case 'name-desc': return b.name.localeCompare(a.name);
       case 'activity': return (a.activity||0) - (b.activity||0);
