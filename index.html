@@ -556,6 +556,7 @@
     </div>
     <div class="modal-foot">
       <button class="btn-sec" onclick="closeModal('bulk-modal')">Cancel</button>
+      <button class="btn-sec" id="bulk-recover-btn" onclick="recoverTranscript()" style="display:none;border-color:#D69E2E;color:#D69E2E;">↩ Recover last transcript</button>
       <button class="btn-sec" id="bulk-record-btn" onclick="startBulkDictation()" style="display:none;">🔴 Record</button>
       <button class="btn-dark" id="bulk-next-btn" onclick="bulkSelectorNext()">Next →</button>
       <button class="btn-dark" id="bulk-confirm-btn" onclick="confirmBulkSave()" style="display:none;">✓ Save all updates</button>
@@ -1318,6 +1319,7 @@ function openBulkSelector() {
   document.getElementById('bulk-include-onhold').checked = false;
   document.getElementById('bulk-no-update-only').checked = false;
   renderBulkList();
+  updateRecoveryBtn();
   document.getElementById('bulk-modal').classList.add('open');
 }
 
@@ -1441,7 +1443,15 @@ function startBulkDictation() {
     const parts = fullTranscript.trim().split(/next\s+student/i).map(p => p.trim()).filter(p => p.length > 0);
     if (parts.length === 0) { statusText.textContent = '❌ No updates found.'; return; }
 
-    try {
+    // Save transcript and student order to localStorage for recovery
+    localStorage.setItem('cd_last_transcript', JSON.stringify({
+      transcript: fullTranscript.trim(),
+      studentIds: bulkSelectedStudents.map(s => s.id),
+      savedAt: new Date().toISOString()
+    }));
+
+    // Update recovery button
+    updateRecoveryBtn();    try {
       bulkPendingUpdates = [];
 
       // Build a numbered list of all updates for a single API call
@@ -1567,6 +1577,130 @@ function confirmBulkSave() {
     toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1917;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-family:DM Sans,sans-serif;z-index:9999;opacity:1;transition:opacity 0.5s;';
     document.body.appendChild(toast);
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 2500);
+  }
+}
+
+function updateRecoveryBtn() {
+  const saved = localStorage.getItem('cd_last_transcript');
+  const btn = document.getElementById('bulk-recover-btn');
+  if (!btn) return;
+  if (saved) {
+    try {
+      const data = JSON.parse(saved);
+      const ago = Math.round((Date.now() - new Date(data.savedAt)) / 60000);
+      const agoLabel = ago < 60 ? `${ago}m ago` : `${Math.round(ago/60)}h ago`;
+      btn.style.display = 'block';
+      btn.title = `Saved ${agoLabel} — ${data.studentIds.length} students`;
+      btn.textContent = `↩ Recover transcript (${agoLabel})`;
+    } catch(e) { btn.style.display = 'none'; }
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+async function recoverTranscript() {
+  const saved = localStorage.getItem('cd_last_transcript');
+  if (!saved) { alert('No saved transcript found.'); return; }
+
+  try {
+    const data = JSON.parse(saved);
+    // Restore student selection from saved IDs
+    bulkSelectedStudents = data.studentIds
+      .map(id => students.find(s => s.id === id))
+      .filter(Boolean);
+
+    if (!bulkSelectedStudents.length) {
+      alert('Could not restore students — they may have been removed.');
+      return;
+    }
+
+    // Show recording area with recovered transcript
+    document.getElementById('bulk-student-list').style.display = 'none';
+    document.getElementById('bulk-recording-area').style.display = 'block';
+    document.getElementById('bulk-next-btn').style.display = 'none';
+    document.getElementById('bulk-record-btn').style.display = 'block';
+
+    const orderPreview = bulkSelectedStudents.map((s, i) =>
+      `<span style="color:var(--accent);font-weight:600;">${i+1}.</span> ${escHtml(s.name)}`
+    ).join('<br/>');
+    document.getElementById('bulk-order-preview').innerHTML = orderPreview;
+
+    const statusText = document.getElementById('bulk-record-status');
+    statusText.textContent = '↩ Transcript recovered — click "Retry parse" to process it';
+    document.getElementById('bulk-record-status').innerHTML =
+      `↩ Recovered transcript (${bulkSelectedStudents.length} students):<br/><br/>` +
+      `<div style="font-size:12px;opacity:0.8;max-height:80px;overflow-y:auto;">${escHtml(data.transcript.slice(0,300))}${data.transcript.length>300?'…':''}</div>`;
+
+    // Add a retry button
+    const recordBtn = document.getElementById('bulk-record-btn');
+    recordBtn.textContent = '✨ Retry parse';
+    recordBtn.onclick = () => retryParse(data.transcript);
+
+  } catch(e) {
+    alert('Could not recover transcript: ' + e.message);
+  }
+}
+
+async function retryParse(transcript) {
+  const statusText = document.getElementById('bulk-record-status');
+  const btn = document.getElementById('bulk-record-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Parsing…';
+  statusText.textContent = '✨ Claude is parsing your updates…';
+
+  const parts = transcript.trim().split(/next\s+student/i).map(p => p.trim()).filter(p => p.length > 0);
+  if (!parts.length) { statusText.textContent = '❌ No updates found in transcript.'; btn.disabled = false; return; }
+
+  try {
+    bulkPendingUpdates = [];
+    const studentNames = bulkSelectedStudents.slice(0, parts.length).map((s, i) => `${i+1}. ${s.name}`).join('\n');
+    const updatesList = parts.map((p, i) => `${i+1}. ${p}`).join('\n');
+    const system = `You are a coaching assistant. You will receive a numbered list of student names and a corresponding numbered list of spoken updates. Condense each update into a single crisp line under 20 words. Be specific and factual. No filler words.
+Return ONLY a JSON array with one entry per student, in the same order, nothing else:
+[{"index":1,"condensed":"condensed update here"},{"index":2,"condensed":"..."}]`;
+
+    const raw = await callClaude(system, `Students:\n${studentNames}\n\nSpoken updates:\n${updatesList}`);
+    const results = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+    results.forEach(r => {
+      const student = bulkSelectedStudents[r.index - 1];
+      if (student && r.condensed) bulkPendingUpdates.push({ studentId: student.id, student, condensed: r.condensed, approved: true });
+    });
+
+    document.getElementById('bulk-recording-area').style.display = 'none';
+    document.getElementById('bulk-preview-area').style.display = 'block';
+    document.getElementById('bulk-record-btn').style.display = 'none';
+    document.getElementById('bulk-confirm-btn').style.display = 'block';
+
+    document.getElementById('bulk-preview-list').innerHTML = bulkPendingUpdates.map((u, i) => `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;" id="bulk-preview-item-${i}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:13px;font-weight:600;">${escHtml(u.student.name)}</div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;">
+            <input type="checkbox" id="bulk-approve-${i}" checked onchange="toggleBulkApproval(${i})" style="accent-color:var(--accent);width:14px;height:14px;" />
+            Include
+          </label>
+        </div>
+        ${u.student.update ? `<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Previous: ${escHtml(u.student.update)}</div>` : ''}
+        <input type="text" id="bulk-edit-${i}" value="${escHtml(u.condensed)}"
+          style="width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:13px;background:var(--bg);color:var(--text);outline:none;transition:all 0.2s;"
+          onfocus="expandBulkInput(this)" onblur="collapseBulkInput(this)"
+        />
+      </div>`).join('');
+
+    statusText.textContent = `✅ ${bulkPendingUpdates.length} update${bulkPendingUpdates.length!==1?'s':''} ready — review below`;
+    localStorage.removeItem('cd_last_transcript');
+    updateRecoveryBtn();
+
+  } catch(err) {
+    btn.disabled = false;
+    btn.textContent = '✨ Retry parse';
+    if (err.message?.includes('401') || err.message?.includes('invalid')) {
+      localStorage.removeItem('cd_api_key');
+      statusText.textContent = '❌ Invalid API key — cleared. Close and try again.';
+    } else {
+      statusText.textContent = '❌ ' + (err.message || 'Something went wrong. Try again in a minute.');
+    }
   }
 }
 
