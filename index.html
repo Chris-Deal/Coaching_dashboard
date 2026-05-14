@@ -260,16 +260,21 @@
 
     <!-- ROSTER TAB -->
     <div class="tab-content active" id="tab-roster">
+
+      <!-- Top toolbar with report/import/bulk buttons -->
       <div class="toolbar">
         <div class="toolbar-left">Student roster</div>
         <div class="toolbar-right">
           <button class="btn-sec" onclick="openReport()">Weekly report</button>
           <button class="btn-sec" onclick="openImportModal()">Import CSV</button>
           <button class="btn-voice" id="bulk-dictate-btn" onclick="openBulkSelector()" style="padding:7px 14px;border-radius:10px;font-size:13px;"><span class="mic-icon">🎤</span> Bulk update</button>
+          <button class="btn-dark" onclick="openAddModal()">+ Add student</button>
+        </div>
+      </div>
 
       <!-- Weekly Summary -->
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:1.25rem;">
-        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:0;" onclick="toggleWeeklySummary()">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleWeeklySummary()">
           <div style="font-size:13px;font-weight:600;color:var(--text);">📋 Weekly summary <span style="font-size:11px;font-weight:400;color:var(--text3);">— included at top of weekly report</span></div>
           <div id="weekly-summary-toggle" style="font-size:12px;color:var(--text3);">▼ Hide</div>
         </div>
@@ -293,12 +298,7 @@
           <div style="font-size:11px;color:var(--text3);">💡 Say <strong>"next field"</strong> between each answer when dictating all 3.</div>
         </div>
       </div>
-      <div class="toolbar" style="margin-top:0;">
-        <div style="font-size:13px;font-weight:500;color:var(--text);">Student roster</div>
-        <div class="toolbar-right">
-          <button class="btn-dark" onclick="openAddModal()">+ Add student</button>
-        </div>
-      </div>
+
       <input type="file" id="csv-file-input" accept=".csv" style="display:none;position:absolute;" />
 
       <!-- Search & filter bar -->
@@ -2014,6 +2014,9 @@ function switchTab(name) {
     rosterBtn.style.color = 'var(--text2)';
     rosterBtn.style.boxShadow = 'none';
     subnav.style.display = 'block';
+    statFilter = 'all';
+    urgencyFilter = null;
+    document.querySelectorAll('.stat').forEach(el => el.classList.remove('active-filter'));
     renderOutreach();
     renderAppts();
   }
@@ -2430,8 +2433,10 @@ function updateOutreachBadge() {
     return u && u.level !== 'soon';
   }).length;
   const badge = document.getElementById('outreach-count');
-  if (urgentCount > 0) { badge.textContent = urgentCount; badge.style.display = 'inline-block'; }
-  else { badge.style.display = 'none'; }
+  if (badge) {
+    if (urgentCount > 0) { badge.textContent = urgentCount; badge.style.display = 'inline-block'; }
+    else { badge.style.display = 'none'; }
+  }
 }
 
 // ── iCAL PREVIEW & DOWNLOAD ────────────────────────────────
