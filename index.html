@@ -266,6 +266,36 @@
           <button class="btn-sec" onclick="openReport()">Weekly report</button>
           <button class="btn-sec" onclick="openImportModal()">Import CSV</button>
           <button class="btn-voice" id="bulk-dictate-btn" onclick="openBulkSelector()" style="padding:7px 14px;border-radius:10px;font-size:13px;"><span class="mic-icon">🎤</span> Bulk update</button>
+
+      <!-- Weekly Summary -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:1.25rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:0;" onclick="toggleWeeklySummary()">
+          <div style="font-size:13px;font-weight:600;color:var(--text);">📋 Weekly summary <span style="font-size:11px;font-weight:400;color:var(--text3);">— included at top of weekly report</span></div>
+          <div id="weekly-summary-toggle" style="font-size:12px;color:var(--text3);">▼ Hide</div>
+        </div>
+        <div id="weekly-summary-body" style="margin-top:12px;display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;justify-content:flex-end;margin-bottom:2px;">
+            <button class="btn-voice" id="summary-dictate-btn" onclick="startSummaryDictation()" style="padding:6px 14px;font-size:12px;border-radius:8px;"><span>🎤</span> Dictate all 3 fields</button>
+          </div>
+          <div style="background:var(--accent-bg);border:1px solid #C5D3F8;border-radius:var(--radius);padding:8px 12px;font-size:12px;color:var(--accent);display:none;" id="summary-dictate-status"></div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">🏆 Win this week</div>
+            <input type="text" id="summary-win" placeholder="What was your biggest win this week?" oninput="saveWeeklySummary()" style="width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:7px 11px;font-family:inherit;font-size:13px;background:var(--bg);color:var(--text);outline:none;" />
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">🎯 Commitment for next week</div>
+            <input type="text" id="summary-commitment" placeholder="What are you committing to next week?" oninput="saveWeeklySummary()" style="width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:7px 11px;font-family:inherit;font-size:13px;background:var(--bg);color:var(--text);outline:none;" />
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">🔧 Still working on</div>
+            <input type="text" id="summary-working" placeholder="One area you're still developing…" oninput="saveWeeklySummary()" style="width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:7px 11px;font-family:inherit;font-size:13px;background:var(--bg);color:var(--text);outline:none;" />
+          </div>
+          <div style="font-size:11px;color:var(--text3);">💡 Say <strong>"next field"</strong> between each answer when dictating all 3.</div>
+        </div>
+      </div>
+      <div class="toolbar" style="margin-top:0;">
+        <div style="font-size:13px;font-weight:500;color:var(--text);">Student roster</div>
+        <div class="toolbar-right">
           <button class="btn-dark" onclick="openAddModal()">+ Add student</button>
         </div>
       </div>
@@ -368,6 +398,7 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
           <div style="font-size:13px;font-weight:500;color:var(--text);">Scheduled appointments</div>
           <div style="display:flex;gap:6px;">
+            <button class="btn-voice" onclick="openBulkSelectorForAppts()" style="padding:5px 12px;font-size:12px;border-radius:8px;">🎤 Bulk update</button>
             <button class="btn-sec" id="appts-list-btn" onclick="switchApptView('list')" style="font-size:12px;padding:5px 12px;background:var(--text);color:#fff;border:none;">List</button>
             <button class="btn-sec" id="appts-cal-btn" onclick="switchApptView('calendar')" style="font-size:12px;padding:5px 12px;">Calendar</button>
           </div>
@@ -639,6 +670,107 @@ function storageKey() { return 'cd_students_' + currentCoach; }
 function load() { try { students = JSON.parse(localStorage.getItem(storageKey())) || []; } catch(e) { students = []; } }
 function save() { localStorage.setItem(storageKey(), JSON.stringify(students)); }
 
+function startSummaryDictation() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { alert('Voice dictation requires Chrome.'); return; }
+
+  const btn = document.getElementById('summary-dictate-btn');
+  const status = document.getElementById('summary-dictate-status');
+
+  if (btn._recognition) { btn._recognition.stop(); return; }
+
+  const rec = new SpeechRecognition();
+  rec.lang = 'en-US';
+  rec.continuous = true;
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+
+  let fullTranscript = '';
+  btn._recognition = rec;
+  btn.innerHTML = '🔴 Listening… (click to stop)';
+  status.style.display = 'block';
+  status.textContent = '🎤 Listening — speak your win, say "next field", then commitment, "next field", then still working on…';
+
+  rec.onresult = e => {
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) fullTranscript += ' ' + e.results[i][0].transcript;
+    }
+    status.textContent = '🎤 ' + fullTranscript.trim().slice(-80);
+  };
+
+  rec.onend = () => {
+    btn._recognition = null;
+    btn.innerHTML = '<span>🎤</span> Dictate all 3 fields';
+    if (!fullTranscript.trim()) { status.style.display = 'none'; return; }
+
+    status.textContent = '✨ Parsing your answers…';
+
+    // Split on "next field"
+    const parts = fullTranscript.trim().split(/next\s+field/i).map(p => p.trim()).filter(p => p);
+    const fields = ['summary-win', 'summary-commitment', 'summary-working'];
+    const labels = ['win', 'commitment', 'working on'];
+
+    parts.forEach((part, i) => {
+      if (i < fields.length && part) {
+        document.getElementById(fields[i]).value = part;
+      }
+    });
+
+    saveWeeklySummary();
+    status.textContent = `✅ Filled ${Math.min(parts.length, 3)} field${parts.length !== 1 ? 's' : ''}!`;
+    setTimeout(() => { status.style.display = 'none'; }, 3000);
+  };
+
+  rec.onerror = e => {
+    if (e.error === 'no-speech') return;
+    btn._recognition = null;
+    btn.innerHTML = '<span>🎤</span> Dictate all 3 fields';
+    status.style.display = 'none';
+  };
+
+  rec.start();
+}
+
+// ── WEEKLY SUMMARY ────────────────────────────────────────
+function saveWeeklySummary() {
+  localStorage.setItem('cd_weekly_summary_' + currentCoach, JSON.stringify({
+    win: document.getElementById('summary-win')?.value || '',
+    commitment: document.getElementById('summary-commitment')?.value || '',
+    working: document.getElementById('summary-working')?.value || ''
+  }));
+}
+
+function loadWeeklySummary() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('cd_weekly_summary_' + currentCoach) || '{}');
+    if (document.getElementById('summary-win')) document.getElementById('summary-win').value = saved.win || '';
+    if (document.getElementById('summary-commitment')) document.getElementById('summary-commitment').value = saved.commitment || '';
+    if (document.getElementById('summary-working')) document.getElementById('summary-working').value = saved.working || '';
+  } catch(e) {}
+}
+
+function toggleWeeklySummary() {
+  const body = document.getElementById('weekly-summary-body');
+  const icon = document.getElementById('weekly-summary-toggle');
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? 'flex' : 'none';
+  icon.textContent = hidden ? '▼ Hide' : '▶ Show';
+}
+
+function dictateField(fieldId, btn) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { alert('Voice dictation requires Chrome.'); return; }
+  if (btn._recognition) { btn._recognition.stop(); return; }
+  const rec = new SpeechRecognition();
+  rec.lang = 'en-US'; rec.interimResults = false; rec.maxAlternatives = 1;
+  btn._recognition = rec;
+  btn.innerHTML = '🔴';
+  rec.onresult = e => { document.getElementById(fieldId).value = e.results[0][0].transcript; saveWeeklySummary(); };
+  rec.onend = () => { btn.innerHTML = '🎤'; btn._recognition = null; };
+  rec.onerror = () => { btn.innerHTML = '🎤'; btn._recognition = null; };
+  rec.start();
+}
+
 // ── AUTO INIT (no login required) ────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   currentCoach = 'chris';
@@ -648,6 +780,7 @@ window.addEventListener('DOMContentLoaded', () => {
   load();
   renderTable();
   updateOutreachBadge();
+  loadWeeklySummary();
   scheduleAutoReport();
 
   // Wire up CSV file input
@@ -1143,6 +1276,16 @@ function renderReport() {
 
   let html = `<div class="report-header-text">Weekly Coaching Report &nbsp;·&nbsp; ${fromLabel} to ${toLabel} &nbsp;·&nbsp; ${students.length} students &nbsp;·&nbsp; Coach: Chris</div>`;
 
+  // Weekly summary section
+  const summary = (() => { try { return JSON.parse(localStorage.getItem('cd_weekly_summary_chris') || '{}'); } catch(e) { return {}; } })();
+  if (summary.win || summary.commitment || summary.working) {
+    html += `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;">`;
+    if (summary.win) html += `<div style="margin-bottom:8px;"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);">1. Win this week</span><div style="font-size:13px;color:var(--text);margin-top:3px;">${escHtml(summary.win)}</div></div>`;
+    if (summary.commitment) html += `<div style="margin-bottom:8px;"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);">2. Commitment for next week</span><div style="font-size:13px;color:var(--text);margin-top:3px;">${escHtml(summary.commitment)}</div></div>`;
+    if (summary.working) html += `<div><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);">3. Still working on</span><div style="font-size:13px;color:var(--text);margin-top:3px;">${escHtml(summary.working)}</div></div>`;
+    html += `</div>`;
+  }
+
   groups.forEach(g => {
     const list = students.filter(g.filter);
     if (!list.length) return;
@@ -1172,7 +1315,12 @@ function copyReport() {
   const to = document.getElementById('report-to').value;
   const fromLabel = from ? fmtDate(from) : '—';
   const toLabel = to ? fmtDate(to) : '—';
-  let text = `WEEKLY COACHING REPORT — ${fromLabel} to ${toLabel}\nCoach: ${currentCoach.charAt(0).toUpperCase() + currentCoach.slice(1)}\n\n`;
+  const summary = (() => { try { return JSON.parse(localStorage.getItem('cd_weekly_summary_chris') || '{}'); } catch(e) { return {}; } })();
+  let text = `WEEKLY COACHING REPORT — ${fromLabel} to ${toLabel}\nCoach: Chris\n\n`;
+  if (summary.win) text += `1. WIN THIS WEEK\n${summary.win}\n\n`;
+  if (summary.commitment) text += `2. COMMITMENT FOR NEXT WEEK\n${summary.commitment}\n\n`;
+  if (summary.working) text += `3. STILL WORKING ON\n${summary.working}\n\n`;
+  text += `STUDENT UPDATES\n`;
   const groups = [
     { label: 'Actively in a deal', filter: s => s.activity == 1 },
     { label: 'Taking action', filter: s => s.activity == 2 },
@@ -1288,6 +1436,7 @@ function markOutreachComplete(id) {
 let bulkRecognition = null;
 let bulkSelectedStudents = [];
 let bulkPendingUpdates = [];
+let bulkCheckedIds = new Set();
 
 function getApiKey() {
   let key = localStorage.getItem('cd_api_key');
@@ -1317,6 +1466,15 @@ async function callClaude(system, userMsg) {
   return data.content?.[0]?.text?.trim() || '';
 }
 
+function openBulkSelectorForAppts() {
+  // Pre-select all students with upcoming appointments
+  const today = new Date(); today.setHours(0,0,0,0);
+  bulkCheckedIds = new Set(
+    students.filter(s => s.scheduledAppt && new Date(s.scheduledAppt+'T00:00:00') >= today).map(s => s.id)
+  );
+  openBulkSelector();
+}
+
 function openBulkSelector() {
   // Reset UI
   document.getElementById('bulk-recording-area').style.display = 'none';
@@ -1328,6 +1486,7 @@ function openBulkSelector() {
   document.getElementById('bulk-record-status').textContent = 'Ready — click Record to begin';
   document.getElementById('bulk-search').value = '';
   document.getElementById('bulk-sort').value = 'no-update';
+  bulkCheckedIds = new Set();
   document.getElementById('bulk-include-onhold').checked = false;
   document.getElementById('bulk-no-update-only').checked = false;
   renderBulkList();
@@ -1337,10 +1496,11 @@ function openBulkSelector() {
 
 function renderBulkList() {
   const search = document.getElementById('bulk-search')?.value.toLowerCase() || '';
-  const sort = document.getElementById('bulk-sort')?.value || 'name';
+  const sort = document.getElementById('bulk-sort')?.value || 'no-update';
 
-  // Keep track of already-checked IDs so they stay checked on re-render
-  const checked = new Set([...document.querySelectorAll('.bulk-check:checked')].map(b => b.dataset.id));
+  // Merge currently visible checked boxes into persistent set before re-rendering
+  document.querySelectorAll('.bulk-check:checked').forEach(b => bulkCheckedIds.add(b.dataset.id));
+  document.querySelectorAll('.bulk-check:not(:checked)').forEach(b => bulkCheckedIds.delete(b.dataset.id));
 
   let list = students.filter(s => {
     if (s.activity === 6 && !document.getElementById('bulk-include-onhold')?.checked) return false;
@@ -1381,7 +1541,7 @@ function renderBulkList() {
     const lastUpd = s.updatedAt ? new Date(s.updatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : 'Never';
     const lastCon = s.lastContact ? fmtDate(s.lastContact) : 'No contact';
     return `<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;">
-      <input type="checkbox" class="bulk-check" data-id="${s.id}" ${checked.has(s.id)?'checked':''} style="width:15px;height:15px;accent-color:var(--accent);flex-shrink:0;" />
+      <input type="checkbox" class="bulk-check" data-id="${s.id}" ${bulkCheckedIds.has(s.id)?'checked':''} style="width:15px;height:15px;accent-color:var(--accent);flex-shrink:0;" />
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:500;">${escHtml(s.name)}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:1px;">Last contact: ${lastCon} · Updated: ${lastUpd}</div>
@@ -1394,13 +1554,20 @@ function renderBulkList() {
 function toggleAllBulk() {
   const boxes = document.querySelectorAll('.bulk-check');
   const allChecked = [...boxes].every(b => b.checked);
-  boxes.forEach(b => b.checked = !allChecked);
+  boxes.forEach(b => {
+    b.checked = !allChecked;
+    if (!allChecked) bulkCheckedIds.add(b.dataset.id);
+    else bulkCheckedIds.delete(b.dataset.id);
+  });
 }
 
 function bulkSelectorNext() {
-  const checked = [...document.querySelectorAll('.bulk-check:checked')];
-  if (!checked.length) { alert('Please select at least one student.'); return; }
-  bulkSelectedStudents = checked.map(cb => students.find(s => s.id === cb.dataset.id)).filter(Boolean);
+  // Sync any currently visible checkboxes into bulkCheckedIds
+  document.querySelectorAll('.bulk-check:checked').forEach(b => bulkCheckedIds.add(b.dataset.id));
+  document.querySelectorAll('.bulk-check:not(:checked)').forEach(b => bulkCheckedIds.delete(b.dataset.id));
+
+  if (!bulkCheckedIds.size) { alert('Please select at least one student.'); return; }
+  bulkSelectedStudents = [...bulkCheckedIds].map(id => students.find(s => s.id === id)).filter(Boolean);
 
   // Show order preview
   document.getElementById('bulk-order-preview').innerHTML =
