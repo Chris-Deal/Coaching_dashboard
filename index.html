@@ -1255,6 +1255,18 @@ function startDictation(fieldId, btn) {
   recognition.start();
 }
 
+function outreachUpdateActivity(id, value) {
+  const student = students.find(s => s.id === id);
+  if (!student) return;
+  student.activity = parseInt(value);
+  if (student.activity === 6 && !student.update) student.update = 'On hold';
+  student.updatedAt = new Date().toISOString();
+  save_data();
+  renderTable();
+  renderOutreach();
+  renderAppts();
+}
+
 function outreachUpdateField(id, field, value) {
   const student = students.find(s => s.id === id);
   if (student) { student[field] = value; student.updatedAt = new Date().toISOString(); save_data(); updateOutreachBadge(); }
@@ -1975,7 +1987,7 @@ function renderAppts() {
   const badge = document.getElementById('appts-count-badge');
   if (badge) { badge.textContent = futureAppts.length; badge.style.display = futureAppts.length ? 'inline-block' : 'none'; }
   if (apptView === 'list') renderApptsListView(futureAppts, pastAppts, today);
-  else renderApptCalView(futureAppts);
+  else renderApptCalView(futureAppts, pastAppts);
 }
 
 function renderApptsListView(futureAppts, pastAppts, today) {
@@ -1996,10 +2008,14 @@ function renderApptsListView(futureAppts, pastAppts, today) {
       html += `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${urgColor};border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;">
         <div>
           <div style="font-weight:500;font-size:14px;">${escHtml(s.name)}</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:3px;">${escHtml(s.update || 'No status update')}</div>
-          <div style="display:flex;gap:10px;align-items:center;margin-top:6px;flex-wrap:wrap;">
-            <span class="badge b${s.activity}">${activityLabel(s.activity)}</span>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+            <select class="inline-select" onchange="outreachUpdateActivity('${s.id}',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:2px 6px;font-family:inherit;font-size:11px;background:var(--surface);cursor:pointer;">
+              ${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${s.activity==n?'selected':''}>${activityLabel(n)}</option>`).join('')}
+            </select>
+            <span class="inline-edit-text" style="font-size:12px;color:var(--text2);" onclick="inlineEdit(this,'update','${s.id}')" title="Click to edit">${escHtml(s.update || 'No update — click to add')}</span>
             ${podioBtn}
+          </div>
+          <div style="margin-top:6px;">
             <label style="font-size:11px;color:var(--text3);">Appt date: <input type="date" value="${s.scheduledAppt}" onchange="outreachUpdateField('${s.id}','scheduledAppt',this.value);renderAppts();" class="inline-date" style="margin-left:4px;" /></label>
           </div>
         </div>
@@ -2019,8 +2035,13 @@ function renderApptsListView(futureAppts, pastAppts, today) {
       html += `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid #E53E3E;border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;">
         <div>
           <div style="font-weight:500;font-size:14px;">${escHtml(s.name)}</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:3px;">${escHtml(s.update || 'No status update')}</div>
-          <div style="display:flex;gap:10px;align-items:center;margin-top:6px;">${podioBtn}</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+            <select class="inline-select" onchange="outreachUpdateActivity('${s.id}',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:2px 6px;font-family:inherit;font-size:11px;background:var(--surface);cursor:pointer;">
+              ${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${s.activity==n?'selected':''}>${activityLabel(n)}</option>`).join('')}
+            </select>
+            <span class="inline-edit-text" style="font-size:12px;color:var(--text2);" onclick="inlineEdit(this,'update','${s.id}')" title="Click to edit">${escHtml(s.update || 'No update — click to add')}</span>
+            ${podioBtn}
+          </div>
         </div>
         <div style="text-align:right;">
           <div style="font-size:12px;font-weight:600;color:#E53E3E;">${daysAgo} day${daysAgo!==1?'s':''} ago</div>
@@ -2033,13 +2054,14 @@ function renderApptsListView(futureAppts, pastAppts, today) {
   listWrap.innerHTML = html;
 }
 
-function renderApptCalView(futureAppts) {
+function renderApptCalView(futureAppts, pastAppts) {
   const calWrap = document.getElementById('appts-cal-view');
   const year = apptCalMonth.getFullYear();
   const month = apptCalMonth.getMonth();
   const monthLabel = apptCalMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const apptMap = {};
-  futureAppts.forEach(s => { if (!apptMap[s.scheduledAppt]) apptMap[s.scheduledAppt] = []; apptMap[s.scheduledAppt].push(s); });
+  futureAppts.forEach(s => { if (!apptMap[s.scheduledAppt]) apptMap[s.scheduledAppt] = []; apptMap[s.scheduledAppt].push({...s, past: false}); });
+  if (pastAppts) pastAppts.forEach(s => { if (!apptMap[s.scheduledAppt]) apptMap[s.scheduledAppt] = []; apptMap[s.scheduledAppt].push({...s, past: true}); });
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date(); today.setHours(0,0,0,0);
@@ -2047,6 +2069,10 @@ function renderApptCalView(futureAppts) {
     <button class="btn-sec" onclick="changeApptMonth(-1)" style="font-size:12px;padding:5px 10px;">← Prev</button>
     <div style="font-size:14px;font-weight:600;">${monthLabel}</div>
     <button class="btn-sec" onclick="changeApptMonth(1)" style="font-size:12px;padding:5px 10px;">Next →</button>
+  </div>
+  <div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:var(--text3);">
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:3px;background:var(--accent);display:inline-block;"></span> Upcoming</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:3px;background:var(--border2);display:inline-block;"></span> Past</span>
   </div>
   <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
     ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div style="text-align:center;font-size:10px;font-weight:600;color:var(--text3);padding:4px;">${d}</div>`).join('')}
@@ -2056,10 +2082,13 @@ function renderApptCalView(futureAppts) {
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isToday = new Date(dateStr+'T00:00:00').getTime() === today.getTime();
+    const isPast = new Date(dateStr+'T00:00:00') < today;
     const appts = apptMap[dateStr] || [];
-    html += `<div style="min-height:60px;background:${appts.length?'var(--accent-bg)':'var(--surface)'};border:1px solid ${isToday?'var(--accent)':'var(--border)'};border-radius:6px;padding:4px;">
+    const hasFuture = appts.some(a => !a.past);
+    const hasPast = appts.some(a => a.past);
+    html += `<div style="min-height:60px;background:${hasFuture?'var(--accent-bg)':hasPast?'var(--surface2)':'var(--surface)'};border:1px solid ${isToday?'var(--accent)':'var(--border)'};border-radius:6px;padding:4px;${isPast&&!appts.length?'opacity:0.5':''}">
       <div style="font-size:11px;font-weight:${isToday?'700':'400'};color:${isToday?'var(--accent)':'var(--text2)'};">${d}</div>
-      ${appts.map(s=>`<div style="font-size:10px;background:var(--accent);color:#fff;border-radius:4px;padding:1px 4px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(s.name)}">${escHtml(s.name.split(' ')[0])}</div>`).join('')}
+      ${appts.map(a=>`<div style="font-size:10px;background:${a.past?'var(--border2)':'var(--accent)'};color:${a.past?'var(--text2)':'#fff'};border-radius:4px;padding:1px 4px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(a.name)}">${escHtml(a.name.split(' ')[0])}</div>`).join('')}
     </div>`;
   }
   html += `</div>`;
@@ -2068,7 +2097,10 @@ function renderApptCalView(futureAppts) {
 
 function changeApptMonth(dir) {
   apptCalMonth = new Date(apptCalMonth.getFullYear(), apptCalMonth.getMonth() + dir, 1);
-  renderApptCalView(students.filter(s => s.scheduledAppt && new Date(s.scheduledAppt+'T00:00:00') >= new Date().setHours(0,0,0,0)));
+  const today = new Date(); today.setHours(0,0,0,0);
+  const futureAppts = students.filter(s => s.scheduledAppt && new Date(s.scheduledAppt+'T00:00:00') >= today);
+  const pastAppts = students.filter(s => s.scheduledAppt && new Date(s.scheduledAppt+'T00:00:00') < today);
+  renderApptCalView(futureAppts, pastAppts);
 }
 
 function markApptComplete(id) {
@@ -2149,7 +2181,9 @@ function renderOutreach() {
         <div style="flex:1;">
           <div class="oc-name">${escHtml(s.name)}</div>
           <div class="oc-meta">
-            <span class="badge b${s.activity}">${activityLabel(s.activity)}</span>
+            <select class="inline-select" onchange="outreachUpdateActivity('${s.id}',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:2px 6px;font-family:inherit;font-size:11px;background:var(--surface);cursor:pointer;">
+              ${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${s.activity==n?'selected':''}>${activityLabel(n)}</option>`).join('')}
+            </select>
             <span class="inline-edit-text" style="font-size:12px;color:var(--text2);" onclick="inlineEdit(this,'update','${s.id}')" title="Click to edit status">${escHtml(s.update || 'No update — click to add')}</span>
             ${podioBtn}
           </div>
@@ -2183,16 +2217,23 @@ function renderOutreach() {
         ? `<span style="color:var(--accent);font-size:11px;">📅 Check back: ${fmtDate(s.checkBack)}</span>`
         : `<span style="color:var(--text3);font-size:11px;">No check-back date set</span>`;
       const podioBtn = s.podio ? `<a class="podio-btn" href="${escHtml(s.podio)}" target="_blank" rel="noopener">Open Podio ↗</a>` : '';
-      return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--text3);border-radius:var(--radius);padding:12px 16px;margin-bottom:6px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;">
-        <div>
-          <div style="font-weight:500;font-size:13px;">${escHtml(s.name)}</div>
-          <div style="margin-top:4px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-            ${checkBackLabel}
-            <span style="font-size:12px;color:var(--text2);">${escHtml(s.update || 'No update entered')}</span>
-            ${podioBtn}
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--text3);border-radius:var(--radius);padding:12px 16px;margin-bottom:6px;">
+        <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;">
+          <div>
+            <div style="font-weight:500;font-size:13px;">${escHtml(s.name)}</div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+              <select class="inline-select" onchange="outreachUpdateActivity('${s.id}',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:2px 6px;font-family:inherit;font-size:11px;background:var(--surface);cursor:pointer;">
+                ${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${s.activity==n?'selected':''}>${activityLabel(n)}</option>`).join('')}
+              </select>
+              <span class="inline-edit-text" style="font-size:12px;color:var(--text2);" onclick="inlineEdit(this,'update','${s.id}')" title="Click to edit">${escHtml(s.update || 'No update — click to add')}</span>
+            </div>
+            <div style="margin-top:6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              ${checkBackLabel}
+              ${podioBtn}
+            </div>
           </div>
+          <button class="btn-edit" onclick="openEditModal('${s.id}')">Edit</button>
         </div>
-        <button class="btn-edit" onclick="openEditModal('${s.id}')">Edit</button>
       </div>`;
     }).join('');
   }
