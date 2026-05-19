@@ -235,6 +235,8 @@
       </div>
     </div>
     <div class="topbar-right">
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);" id="tb-today"></div>
+      <div class="tb-sep"></div>
       <div class="tb-week" id="tb-week"></div>
       <button class="btn-logout" onclick="doLogout()">Sign out</button>
     </div>
@@ -776,6 +778,7 @@ window.addEventListener('DOMContentLoaded', () => {
   currentCoach = 'chris';
   document.getElementById('tb-coach-name').textContent = 'Chris';
   document.getElementById('tb-week').textContent = weekLabel();
+  document.getElementById('tb-today').textContent = new Date().toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
   loadCadence();
   load();
   renderTable();
@@ -949,7 +952,7 @@ function renderTable() {
     ).join('');
     return `<tr data-id="${s.id}">
       <td style="min-width:160px;">
-        <div style="font-weight:500;font-size:13px;">${escHtml(s.name)}</div>
+        <div style="font-weight:500;font-size:13px;">${escHtml(s.name)}${s.snoozedUntil && new Date(s.snoozedUntil+'T00:00:00') > new Date() ? `<span style="font-size:10px;color:var(--amber);margin-left:6px;font-weight:400;">⏰ snoozed</span>` : ''}</div>
         ${podioBtn}
         <div style="font-size:11px;color:var(--text3);margin-top:3px;">
           <span class="inline-edit-text" onclick="inlineEdit(this,'pairedCoach','${s.id}')" title="Click to edit co-coach">👤 ${escHtml(s.pairedCoach || 'No co-coach')}</span>
@@ -1401,6 +1404,23 @@ function startDictation(fieldId, btn) {
     activeVoiceBtn = null;
   };
   recognition.start();
+}
+
+function snoozeStudent(id, date) {
+  const student = students.find(s => s.id === id);
+  if (!student) return;
+  student.snoozedUntil = date;
+  student.updatedAt = new Date().toISOString();
+  save_data();
+  renderOutreach();
+  renderTable();
+  if (date) {
+    const toast = document.createElement('div');
+    toast.textContent = `⏰ ${student.name} snoozed until ${fmtDate(date)}`;
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1917;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-family:DM Sans,sans-serif;z-index:9999;';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
 }
 
 function outreachUpdateActivity(id, value) {
@@ -2093,6 +2113,14 @@ function outreachUrgency(student) {
 
   const today = new Date(); today.setHours(0,0,0,0);
 
+  // Snooze override — suppress from outreach until snooze date
+  if (student.snoozedUntil) {
+    const snoozeDate = new Date(student.snoozedUntil + 'T00:00:00');
+    if (snoozeDate > today) return null; // snoozed — hide from outreach
+    // Snooze expired — clear it and continue normal cadence
+    student.snoozedUntil = '';
+  }
+
   // Priority 1: Future scheduled appointment — suppress from outreach entirely (handled in appts tab)
   if (student.scheduledAppt) {
     const apptDate = new Date(student.scheduledAppt + 'T00:00:00');
@@ -2363,6 +2391,9 @@ function renderOutreach() {
             </label>
             <label style="font-size:11px;color:var(--text3);">Next appt:
               <input type="date" value="${s.scheduledAppt||''}" onchange="outreachUpdateField('${s.id}','scheduledAppt',this.value)" class="inline-date" style="margin-left:4px;${s.scheduledAppt?'color:#1A7A4A;font-weight:500;':''}" />
+            </label>
+            <label style="font-size:11px;color:var(--amber);" title="Snooze this student — hide from outreach until this date">⏰ Snooze until:
+              <input type="date" value="${s.snoozedUntil||''}" onchange="snoozeStudent('${s.id}',this.value)" class="inline-date" style="margin-left:4px;color:var(--amber);" />
             </label>
           </div>
         </div>
