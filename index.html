@@ -2183,7 +2183,12 @@ function renderAppts() {
     .sort((a,b) => a.scheduledAppt.localeCompare(b.scheduledAppt));
   const pastAppts = students.filter(s => s.scheduledAppt && new Date(s.scheduledAppt + 'T00:00:00') < today);
   const badge = document.getElementById('appts-count-badge');
-  if (badge) { badge.textContent = futureAppts.length; badge.style.display = futureAppts.length ? 'inline-block' : 'none'; }
+  // Only count today's appts and past due — not future
+  const todayAndPastCount = pastAppts.length + futureAppts.filter(s => {
+    const d = new Date(s.scheduledAppt + 'T00:00:00');
+    return d.getTime() === today.getTime(); // today only from futureAppts
+  }).length;
+  if (badge) { badge.textContent = todayAndPastCount; badge.style.display = todayAndPastCount ? 'inline-block' : 'none'; }
   if (apptView === 'list') renderApptsListView(futureAppts, pastAppts, today);
   else renderApptCalView(futureAppts, pastAppts);
 }
@@ -2348,9 +2353,10 @@ function renderOutreach() {
   if (urgentCount > 0) { badge.textContent = urgentCount; badge.style.display = 'inline-block'; }
   else { badge.style.display = 'none'; }
 
-  // Update outreach due sub-tab badge
+  // Update outreach due sub-tab badge — only urgent & due, not "soon"
   const dueBadge = document.getElementById('outreach-due-badge');
-  if (dueBadge) { dueBadge.textContent = toContact.length; dueBadge.style.display = toContact.length ? 'inline-block' : 'none'; }
+  const urgentDueCount = toContact.filter(s => s.urgency.level !== 'soon').length;
+  if (dueBadge) { dueBadge.textContent = urgentDueCount; dueBadge.style.display = urgentDueCount ? 'inline-block' : 'none'; }
 
   document.getElementById('ical-btn').style.display = toContact.length ? 'block' : 'none';
 
