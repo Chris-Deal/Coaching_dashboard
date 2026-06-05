@@ -95,6 +95,7 @@
   /* ── BADGES ── */
   .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; white-space: nowrap; }
   .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .b0 { background: #EDE9FE; color: #5B21B6; } .b0::before { background: #5B21B6; }
   .b1 { background: var(--green-bg); color: var(--green); } .b1::before { background: var(--green); }
   .b2 { background: var(--accent-bg); color: var(--accent); } .b2::before { background: var(--accent); }
   .b3 { background: var(--amber-bg); color: var(--amber); } .b3::before { background: var(--amber); }
@@ -308,6 +309,7 @@
         <input type="text" id="search-input" placeholder="🔍  Search students…" oninput="renderTable()" style="flex:1;min-width:180px;border:1px solid var(--border);border-radius:var(--radius);padding:7px 12px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--text);outline:none;" />
         <select id="filter-activity" onchange="renderTable()" style="border:1px solid var(--border);border-radius:var(--radius);padding:7px 12px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">
           <option value="">All activity levels</option>
+          <option value="0">New member</option>
           <option value="1">1 — Actively in a deal</option>
           <option value="2">2 — Taking action</option>
           <option value="3">3 — Starting to stall</option>
@@ -376,6 +378,7 @@
 
         <div class="cadence-info" style="flex-wrap:wrap;gap:8px;">
           <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-right:4px;">Cadence rules:</span>
+          <span class="cadence-item"><strong>New member</strong> · every <input type="number" id="cadence-0" min="1" max="30" value="3" onchange="saveCadence()" style="width:36px;padding:1px 4px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:11px;text-align:center;" /> days</span>
           <span class="cadence-item"><strong>In deal</strong> · every <input type="number" id="cadence-1" min="1" max="30" value="2" onchange="saveCadence()" style="width:36px;padding:1px 4px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:11px;text-align:center;" /> days</span>
           <span class="cadence-item"><strong>Taking action</strong> · every <input type="number" id="cadence-2" min="1" max="60" value="7" onchange="saveCadence()" style="width:36px;padding:1px 4px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:11px;text-align:center;" /> days</span>
           <span class="cadence-item"><strong>Stalling</strong> · every <input type="number" id="cadence-3" min="1" max="30" value="3" onchange="saveCadence()" style="width:36px;padding:1px 4px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:11px;text-align:center;" /> days</span>
@@ -466,6 +469,7 @@
         <div class="fg">
           <label>Activity level</label>
           <select id="f-activity" onchange="toggleCheckBack()">
+            <option value="0">New member</option>
             <option value="1">1 — Actively in a deal</option>
             <option value="2">2 — Taking action, no deal yet</option>
             <option value="3">3 — Starting to stall</option>
@@ -520,7 +524,7 @@
         <div style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text2);line-height:1.8;margin-bottom:10px;">name, podio_link, podio_status,<br/>activity_level, status_update,<br/>last_contact, scheduled_appt,<br/>paired_coach</div>
         <button class="btn-sec" onclick="downloadTemplate()" style="font-size:12px;padding:6px 14px;">⬇ Download template</button>
       </div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">Activity levels: <strong>1</strong> = In deal &nbsp;·&nbsp; <strong>2</strong> = Taking action &nbsp;·&nbsp; <strong>3</strong> = Stalling &nbsp;·&nbsp; <strong>4</strong> = Recently inactive &nbsp;·&nbsp; <strong>5</strong> = Long-term inactive &nbsp;·&nbsp; <strong>6</strong> = On hold</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">Activity levels: <strong>0</strong> = New member &nbsp;·&nbsp; <strong>1</strong> = In deal &nbsp;·&nbsp; <strong>2</strong> = Taking action &nbsp;·&nbsp; <strong>3</strong> = Stalling &nbsp;·&nbsp; <strong>4</strong> = Recently inactive &nbsp;·&nbsp; <strong>5</strong> = Long-term inactive &nbsp;·&nbsp; <strong>6</strong> = On hold</div>
       <div style="font-size:12px;color:var(--text2);">Dates should be in <strong>YYYY-MM-DD</strong> or <strong>M/D/YY</strong> format. Leave fields blank if unknown — you can fill them in by editing each student afterward.</div>
     </div>
     <div class="modal-foot">
@@ -839,7 +843,7 @@ function weekLabel() {
 }
 
 function activityLabel(n) {
-  const labels = ['', 'Actively in deal', 'Taking action', 'Starting to stall', 'Recently inactive', 'Long-term inactive', 'On hold'];
+  const labels = { 0: 'New member', 1: 'Actively in deal', 2: 'Taking action', 3: 'Starting to stall', 4: 'Recently inactive', 5: 'Long-term inactive', 6: 'On hold' };
   return labels[n] || '';
 }
 
@@ -947,7 +951,7 @@ function renderTable() {
       ? `<div style="font-size:11px;color:var(--text3);margin-top:3px;">👤 ${escHtml(s.pairedCoach)}</div>`
       : '';
     const updateText = s.update ? (s.update.length > 45 ? s.update.slice(0, 45) + '…' : s.update) : '—';
-    const actOptions = [1,2,3,4,5,6].map(n =>
+    const actOptions = [0,1,2,3,4,5,6].map(n =>
       `<option value="${n}" ${s.activity==n?'selected':''}>${activityLabel(n)}</option>`
     ).join('');
     return `<tr data-id="${s.id}">
@@ -1270,6 +1274,7 @@ function renderReport() {
   }
 
   const groups = [
+    { label: 'New member', filter: s => s.activity == 0 },
     { label: 'Actively in a deal', filter: s => s.activity == 1 },
     { label: 'Taking action', filter: s => s.activity == 2 },
     { label: 'Starting to stall', filter: s => s.activity == 3 },
@@ -1325,6 +1330,7 @@ function copyReport() {
   if (summary.working) text += `3. STILL WORKING ON\n${summary.working}\n\n`;
   text += `STUDENT UPDATES\n`;
   const groups = [
+    { label: 'New member', filter: s => s.activity == 0 },
     { label: 'Actively in a deal', filter: s => s.activity == 1 },
     { label: 'Taking action', filter: s => s.activity == 2 },
     { label: 'Starting to stall', filter: s => s.activity == 3 },
@@ -2043,11 +2049,11 @@ function switchTab(name) {
 }
 
 // ── OUTREACH CADENCE ─────────────────────────────────────
-let CADENCE = { 1: 2, 2: 7, 3: 3, 4: 14, 5: 30 };
+let CADENCE = { 0: 3, 1: 2, 2: 7, 3: 3, 4: 14, 5: 30 };
 let urgencyFilter = null;
 
 function saveCadence() {
-  [1,2,3,4,5].forEach(n => {
+  [0,1,2,3,4,5].forEach(n => {
     const val = parseInt(document.getElementById('cadence-' + n)?.value);
     if (val > 0) CADENCE[n] = val;
   });
@@ -2213,7 +2219,7 @@ function renderApptsListView(futureAppts, pastAppts, today) {
           <div style="font-weight:500;font-size:14px;">${escHtml(s.name)}</div>
           <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;">
             <select class="inline-select" onchange="outreachUpdateActivity('${s.id}',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:2px 6px;font-family:inherit;font-size:11px;background:var(--surface);cursor:pointer;">
-              ${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${s.activity==n?'selected':''}>${activityLabel(n)}</option>`).join('')}
+              ${[0,1,2,3,4,5,6].map(n=>`<option value="${n}" ${s.activity==n?'selected':''}>${activityLabel(n)}</option>`).join('')}
             </select>
             <span class="inline-edit-text" style="font-size:12px;color:var(--text2);" onclick="inlineEdit(this,'update','${s.id}')" title="Click to edit">${escHtml(s.update || 'No update — click to add')}</span>
             ${podioBtn}
@@ -2241,7 +2247,7 @@ function renderApptsListView(futureAppts, pastAppts, today) {
           <div style="font-weight:500;font-size:14px;">${escHtml(s.name)}</div>
           <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;">
             <select class="inline-select" onchange="outreachUpdateActivity('${s.id}',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:2px 6px;font-family:inherit;font-size:11px;background:var(--surface);cursor:pointer;">
-              ${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${s.activity==n?'selected':''}>${activityLabel(n)}</option>`).join('')}
+              ${[0,1,2,3,4,5,6].map(n=>`<option value="${n}" ${s.activity==n?'selected':''}>${activityLabel(n)}</option>`).join('')}
             </select>
             <span class="inline-edit-text" style="font-size:12px;color:var(--text2);" onclick="inlineEdit(this,'update','${s.id}')" title="Click to edit">${escHtml(s.update || 'No update — click to add')}</span>
             ${podioBtn}
@@ -2332,7 +2338,7 @@ function renderOutreach() {
   document.getElementById('outreach-filter-label').textContent = filterLabels[statFilter] || '';
 
   // Update cadence inputs to reflect current values
-  [1,2,3,4,5].forEach(n => {
+  [0,1,2,3,4,5].forEach(n => {
     const el = document.getElementById('cadence-' + n);
     if (el) el.value = CADENCE[n];
   });
@@ -2391,7 +2397,7 @@ function renderOutreach() {
           <div class="oc-name">${escHtml(s.name)}</div>
           <div class="oc-meta">
             <select class="inline-select" onchange="outreachUpdateActivity('${s.id}',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:2px 6px;font-family:inherit;font-size:11px;background:var(--surface);cursor:pointer;">
-              ${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${s.activity==n?'selected':''}>${activityLabel(n)}</option>`).join('')}
+              ${[0,1,2,3,4,5,6].map(n=>`<option value="${n}" ${s.activity==n?'selected':''}>${activityLabel(n)}</option>`).join('')}
             </select>
             <span class="inline-edit-text" style="font-size:12px;color:var(--text2);" onclick="inlineEdit(this,'update','${s.id}')" title="Click to edit status">${escHtml(s.update || 'No update — click to add')}</span>
             ${podioBtn}
@@ -2435,7 +2441,7 @@ function renderOutreach() {
             <div style="font-weight:500;font-size:13px;">${escHtml(s.name)}</div>
             <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;">
               <select class="inline-select" onchange="outreachUpdateActivity('${s.id}',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:2px 6px;font-family:inherit;font-size:11px;background:var(--surface);cursor:pointer;">
-                ${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${s.activity==n?'selected':''}>${activityLabel(n)}</option>`).join('')}
+                ${[0,1,2,3,4,5,6].map(n=>`<option value="${n}" ${s.activity==n?'selected':''}>${activityLabel(n)}</option>`).join('')}
               </select>
               <span class="inline-edit-text" style="font-size:12px;color:var(--text2);" onclick="inlineEdit(this,'update','${s.id}')" title="Click to edit">${escHtml(s.update || 'No update — click to add')}</span>
             </div>
