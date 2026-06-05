@@ -2218,8 +2218,9 @@ function renderApptsListView(futureAppts, pastAppts, today) {
             <span class="inline-edit-text" style="font-size:12px;color:var(--text2);" onclick="inlineEdit(this,'update','${s.id}')" title="Click to edit">${escHtml(s.update || 'No update — click to add')}</span>
             ${podioBtn}
           </div>
-          <div style="margin-top:6px;">
-            <label style="font-size:11px;color:var(--text3);">Appt date: <input type="date" value="${s.scheduledAppt}" onchange="outreachUpdateField('${s.id}','scheduledAppt',this.value);renderAppts();" class="inline-date" style="margin-left:4px;" /></label>
+          <div style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;">
+            <label style="font-size:11px;color:var(--text3);">Last contact: <input type="date" value="${s.lastContact||''}" onchange="outreachUpdateField('${s.id}','lastContact',this.value)" class="inline-date" style="margin-left:4px;" /></label>
+            <label style="font-size:11px;color:var(--text3);">Appt date: <input type="date" value="${s.scheduledAppt}" onchange="outreachUpdateField('${s.id}','scheduledAppt',this.value);renderAppts();" class="inline-date" style="margin-left:4px;${s.scheduledAppt?'color:#1A7A4A;font-weight:500;':''}" /></label>
           </div>
         </div>
         <div style="text-align:right;">
@@ -2244,6 +2245,10 @@ function renderApptsListView(futureAppts, pastAppts, today) {
             </select>
             <span class="inline-edit-text" style="font-size:12px;color:var(--text2);" onclick="inlineEdit(this,'update','${s.id}')" title="Click to edit">${escHtml(s.update || 'No update — click to add')}</span>
             ${podioBtn}
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+            <label style="font-size:11px;color:var(--text3);">Last contact: <input type="date" value="${s.lastContact||''}" onchange="outreachUpdateField('${s.id}','lastContact',this.value)" class="inline-date" style="margin-left:4px;" /></label>
+            <label style="font-size:11px;color:var(--text3);">Next appt: <input type="date" value="${s.scheduledAppt||''}" onchange="outreachUpdateField('${s.id}','scheduledAppt',this.value);renderAppts();" class="inline-date" style="margin-left:4px;color:#1A7A4A;font-weight:500;" /></label>
           </div>
         </div>
         <div style="text-align:right;">
