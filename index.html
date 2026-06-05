@@ -253,8 +253,9 @@
 
   <div class="main">
     <!-- Stats -->
-    <div class="stats" style="grid-template-columns:repeat(5,1fr);">
+    <div class="stats" style="grid-template-columns:repeat(6,1fr);">
       <div class="stat" id="stat-card-all" onclick="setStatFilter('all')" style="cursor:pointer;" title="Show all students"><div class="stat-label">Total students</div><div class="stat-val" id="stat-total">0</div></div>
+      <div class="stat" id="stat-card-new" onclick="setStatFilter('new')" style="cursor:pointer;" title="Filter: New members"><div class="stat-label">New members</div><div class="stat-val" id="stat-new">0</div></div>
       <div class="stat" id="stat-card-deal" onclick="setStatFilter('deal')" style="cursor:pointer;" title="Filter: In a deal"><div class="stat-label">In a deal</div><div class="stat-val" id="stat-deal">0</div></div>
       <div class="stat" id="stat-card-action" onclick="setStatFilter('action')" style="cursor:pointer;" title="Filter: Taking action"><div class="stat-label">Taking action</div><div class="stat-val" id="stat-action">0</div></div>
       <div class="stat" id="stat-card-inactive" onclick="setStatFilter('inactive')" style="cursor:pointer;" title="Filter: Inactive/stalling"><div class="stat-label">Inactive / stalling</div><div class="stat-val" id="stat-inactive">0</div></div>
@@ -872,7 +873,7 @@ function setStatFilter(filter) {
   document.getElementById('filter-activity').value = '';
   document.querySelectorAll('.stat').forEach(el => el.classList.remove('active-filter'));
   if (statFilter !== 'all') {
-    const cardId = { deal: 'stat-card-deal', action: 'stat-card-action', inactive: 'stat-card-inactive', onhold: 'stat-card-onhold' }[statFilter];
+    const cardId = { new: 'stat-card-new', deal: 'stat-card-deal', action: 'stat-card-action', inactive: 'stat-card-inactive', onhold: 'stat-card-onhold' }[statFilter];
     if (cardId) document.getElementById(cardId).classList.add('active-filter');
   }
   renderTable();
@@ -898,6 +899,7 @@ function clearFilters() {
 function renderTable() {
   const tbody = document.getElementById('student-tbody');
   document.getElementById('stat-total').textContent = students.length;
+  document.getElementById('stat-new').textContent = students.filter(s => s.activity == 0).length;
   document.getElementById('stat-deal').textContent = students.filter(s => s.activity == 1).length;
   document.getElementById('stat-action').textContent = students.filter(s => s.activity == 2).length;
   document.getElementById('stat-inactive').textContent = students.filter(s => s.activity >= 3 && s.activity <= 5).length;
@@ -916,6 +918,7 @@ function renderTable() {
   let filtered = students.filter(s => {
     if (search && !s.name.toLowerCase().includes(search)) return false;
     if (actFilter && s.activity != actFilter) return false;
+    if (statFilter === 'new' && s.activity != 0) return false;
     if (statFilter === 'deal' && s.activity != 1) return false;
     if (statFilter === 'action' && s.activity != 2) return false;
     if (statFilter === 'inactive' && (s.activity < 3 || s.activity > 5)) return false;
@@ -2345,6 +2348,7 @@ function renderOutreach() {
 
   const toContact = [];
   students.forEach(s => {
+    if (statFilter === 'new' && s.activity != 0) return;
     if (statFilter === 'deal' && s.activity != 1) return;
     if (statFilter === 'action' && s.activity != 2) return;
     if (statFilter === 'inactive' && (s.activity < 3 || s.activity > 5)) return;
