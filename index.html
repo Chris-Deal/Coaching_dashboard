@@ -464,6 +464,10 @@
           <input type="url" id="f-podio" placeholder="https://podio.com/..." />
         </div>
         <div class="fg">
+          <label>Phone number</label>
+          <input type="tel" id="f-phone" placeholder="e.g. (619) 555-1234" />
+        </div>
+        <div class="fg">
           <label>Podio status</label>
           <input type="text" id="f-podio-status" placeholder="Active / Inactive..." />
         </div>
@@ -522,7 +526,7 @@
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:1.25rem;">
         <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">📄 CSV template</div>
         <div style="font-size:13px;color:var(--text2);margin-bottom:10px;">Your CSV must use these exact column headers. Download the template to get started:</div>
-        <div style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text2);line-height:1.8;margin-bottom:10px;">name, podio_link, podio_status,<br/>activity_level, status_update,<br/>last_contact, scheduled_appt,<br/>paired_coach</div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text2);line-height:1.8;margin-bottom:10px;">name, podio_link, podio_status,<br/>activity_level, status_update,<br/>last_contact, scheduled_appt,<br/>paired_coach, phone</div>
         <button class="btn-sec" onclick="downloadTemplate()" style="font-size:12px;padding:6px 14px;">⬇ Download template</button>
       </div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">Activity levels: <strong>0</strong> = New member &nbsp;·&nbsp; <strong>1</strong> = In deal &nbsp;·&nbsp; <strong>2</strong> = Taking action &nbsp;·&nbsp; <strong>3</strong> = Stalling &nbsp;·&nbsp; <strong>4</strong> = Recently inactive &nbsp;·&nbsp; <strong>5</strong> = Long-term inactive &nbsp;·&nbsp; <strong>6</strong> = On hold</div>
@@ -961,6 +965,7 @@ function renderTable() {
       <td style="min-width:160px;">
         <div style="font-weight:500;font-size:13px;">${escHtml(s.name)}${s.snoozedUntil && new Date(s.snoozedUntil+'T00:00:00') > new Date() ? `<span style="font-size:10px;color:var(--amber);margin-left:6px;font-weight:400;">⏰ snoozed</span>` : ''}</div>
         ${podioBtn}
+        ${s.phone ? `<div style="font-size:11px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:5px;">📞 <span style="font-family:'DM Mono',monospace;">${escHtml(s.phone)}</span><button onclick="copyPhone('${escHtml(s.phone)}')" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text3);padding:0;" title="Copy number">📋</button></div>` : ''}
         <div style="font-size:11px;color:var(--text3);margin-top:3px;">
           <span class="inline-edit-text" onclick="inlineEdit(this,'pairedCoach','${s.id}')" title="Click to edit co-coach">👤 ${escHtml(s.pairedCoach || 'No co-coach')}</span>
         </div>
@@ -1177,7 +1182,7 @@ function toggleCheckBack() {
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'Add student';
   document.getElementById('edit-id').value = '';
-  ['f-name','f-podio','f-podio-status','f-coach','f-update','f-last-contact','f-scheduled-appt','f-checkback'].forEach(id => {
+  ['f-name','f-podio','f-phone','f-podio-status','f-coach','f-update','f-last-contact','f-scheduled-appt','f-checkback'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('f-activity').value = '2';
@@ -1191,6 +1196,7 @@ function openEditModal(id) {
   document.getElementById('edit-id').value = s.id;
   document.getElementById('f-name').value = s.name || '';
   document.getElementById('f-podio').value = s.podio || '';
+  document.getElementById('f-phone').value = s.phone || '';
   document.getElementById('f-podio-status').value = s.podioStatus || '';
   document.getElementById('f-activity').value = s.activity || '2';
   document.getElementById('f-coach').value = s.pairedCoach || '';
@@ -1210,6 +1216,7 @@ function saveStudent() {
     id: editId || uid(),
     name,
     podio: document.getElementById('f-podio').value.trim(),
+    phone: document.getElementById('f-phone').value.trim(),
     podioStatus: document.getElementById('f-podio-status').value.trim(),
     activity: parseInt(document.getElementById('f-activity').value),
     pairedCoach: document.getElementById('f-coach').value.trim(),
@@ -1413,6 +1420,16 @@ function startDictation(fieldId, btn) {
     activeVoiceBtn = null;
   };
   recognition.start();
+}
+
+function copyPhone(phone) {
+  navigator.clipboard.writeText(phone).then(() => {
+    const toast = document.createElement('div');
+    toast.textContent = `📋 ${phone} copied!`;
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1917;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-family:DM Sans,sans-serif;z-index:9999;';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
+  });
 }
 
 function snoozeStudent(id, date) {
@@ -1918,13 +1935,13 @@ function openImportModal() {
 
 function downloadTemplate() {
   const csv = [
-    'name,podio_link,podio_status,activity_level,status_update,last_contact,scheduled_appt,paired_coach',
-    'Maria Santos,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00001,Active,1,Midway through flip in renovation phase on track for close,2026-04-28,2026-05-07,N/A',
-    'James Okafor,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00002,Active,2,Making offers on properties no contract yet but highly motivated,2026-04-29,,N/A',
-    'Tina Reeves,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00003,Active,3,Missed last two calls says she is busy but engagement is dropping,2026-04-24,,Coach B',
-    'Devon Harris,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00004,Inactive,4,Has not responded in two weeks follow up attempt scheduled,2026-04-15,,N/A',
-    'Chris Walker,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00005,Inactive,5,No contact in over six weeks likely disengaged,2026-03-18,,N/A',
-    'Alex Thompson,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00006,Active,6,Waiting on financing approval before next steps,2026-04-01,2026-05-15,N/A'
+    'name,podio_link,podio_status,activity_level,status_update,last_contact,scheduled_appt,paired_coach,phone',
+    'Maria Santos,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00001,Active,1,Midway through flip in renovation phase on track for close,2026-04-28,2026-05-07,N/A,(619) 555-0101',
+    'James Okafor,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00002,Active,2,Making offers on properties no contract yet but highly motivated,2026-04-29,,N/A,(619) 555-0102',
+    'Tina Reeves,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00003,Active,3,Missed last two calls says she is busy but engagement is dropping,2026-04-24,,Coach B,(619) 555-0103',
+    'Devon Harris,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00004,Inactive,4,Has not responded in two weeks follow up attempt scheduled,2026-04-15,,N/A,(619) 555-0104',
+    'Chris Walker,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00005,Inactive,5,No contact in over six weeks likely disengaged,2026-03-18,,N/A,(619) 555-0105',
+    'Alex Thompson,https://podio.com/workspaces/yourworkspace/apps/contacts/items/00006,Active,6,Waiting on financing approval before next steps,2026-04-01,2026-05-15,N/A,(619) 555-0106'
   ].join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -1993,20 +2010,35 @@ function handleCSVImport(event) {
       if (!row.name) continue;
 
       const existing = students.find(s => s.name && s.name.toLowerCase() === row.name.toLowerCase());
-      const data = {
-        id: existing ? existing.id : uid(),
-        name: row.name,
-        podio: row.podio_link || '',
-        podioStatus: row.podio_status || '',
-        activity: parseActivity(row.activity_level),
-        pairedCoach: row.paired_coach || '',
-        update: row.status_update || '',
-        lastContact: parseDate(row.last_contact),
-        scheduledAppt: parseDate(row.scheduled_appt),
-        updatedAt: new Date().toISOString(),
-      };
-      if (existing) { students[students.findIndex(s => s.id === existing.id)] = data; }
-      else { students.push(data); }
+
+      if (existing) {
+        // Only update fields that are actually present in the CSV headers
+        const idx = students.findIndex(s => s.id === existing.id);
+        if (headers.includes('podio_link') && row.podio_link) students[idx].podio = row.podio_link;
+        if (headers.includes('phone') && row.phone) students[idx].phone = row.phone;
+        if (headers.includes('podio_status') && row.podio_status) students[idx].podioStatus = row.podio_status;
+        if (headers.includes('activity_level') && row.activity_level) students[idx].activity = parseActivity(row.activity_level);
+        if (headers.includes('paired_coach') && row.paired_coach) students[idx].pairedCoach = row.paired_coach;
+        if (headers.includes('status_update') && row.status_update) students[idx].update = row.status_update;
+        if (headers.includes('last_contact') && row.last_contact) students[idx].lastContact = parseDate(row.last_contact);
+        if (headers.includes('scheduled_appt') && row.scheduled_appt) students[idx].scheduledAppt = parseDate(row.scheduled_appt);
+        students[idx].updatedAt = new Date().toISOString();
+      } else {
+        // New student — create full record
+        students.push({
+          id: uid(),
+          name: row.name,
+          podio: row.podio_link || '',
+          phone: row.phone || '',
+          podioStatus: row.podio_status || '',
+          activity: parseActivity(row.activity_level),
+          pairedCoach: row.paired_coach || '',
+          update: row.status_update || '',
+          lastContact: parseDate(row.last_contact),
+          scheduledAppt: parseDate(row.scheduled_appt),
+          updatedAt: new Date().toISOString(),
+        });
+      }
       count++;
     }
 
@@ -2405,6 +2437,7 @@ function renderOutreach() {
             </select>
             <span class="inline-edit-text" style="font-size:12px;color:var(--text2);" onclick="inlineEdit(this,'update','${s.id}')" title="Click to edit status">${escHtml(s.update || 'No update — click to add')}</span>
             ${podioBtn}
+            ${s.phone ? `<span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">📞 ${escHtml(s.phone)} <button onclick="copyPhone('${escHtml(s.phone)}')" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text3);padding:0;" title="Copy">📋</button></span>` : ''}
           </div>
           <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;align-items:center;">
             <label style="font-size:11px;color:var(--text3);">Last contact:
